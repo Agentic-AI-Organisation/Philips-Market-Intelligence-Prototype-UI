@@ -90,6 +90,29 @@ export function PanelChat() {
     if (isOpen) inputRef.current?.focus()
   }, [isOpen])
 
+  // Grows the input with its content, up to ~3 lines (max-h-20 below) —
+  // past that, it scrolls internally instead of growing further. Keyed on
+  // inputValue (not a native onInput handler) so this also fires when text
+  // is set programmatically — a quick-prompt chip or a library pick — not
+  // just when the user types; onInput never fires for a React-controlled
+  // value change that didn't originate from a real keystroke.
+  //
+  // Empty input clears the inline height instead of measuring scrollHeight,
+  // so the resting size always falls back to the min-h-11 CSS class exactly
+  // — measuring here would be unreliable right after the panel opens, since
+  // its own width is still mid-transition (CSS transition on isOpen) and a
+  // too-narrow container briefly wraps text taller than it really is.
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    if (!inputValue) {
+      el.style.height = ""
+      return
+    }
+    el.style.height = "auto"
+    el.style.height = Math.min(el.scrollHeight, 80) + "px"
+  }, [inputValue])
+
   function toggleSourceExpansion(messageId: string) {
     setExpandedSources((prev) => {
       const next = new Set(prev)
@@ -410,12 +433,7 @@ export function PanelChat() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about this account..."
               rows={1}
-              className="min-h-11 max-h-25 flex-1 resize-none rounded-xl px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement
-                target.style.height = "auto"
-                target.style.height = Math.min(target.scrollHeight, 100) + "px"
-              }}
+              className="min-h-11 max-h-20 flex-1 resize-none rounded-xl px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none"
             />
 
             <button
