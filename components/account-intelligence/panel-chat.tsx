@@ -16,17 +16,14 @@ import {
   Bookmark,
   BookmarkCheck,
   Library,
-  Plus,
-  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import * as api from "@/lib/mock-api"
 import type { ChatSource } from "@/lib/types"
 import { useAccountContext } from "@/lib/account-context"
-import { useQuickPrompts, useRevalidatePrompts, useSavedPrompts, useSystemPrompts } from "@/lib/use-prompts-data"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useQuickPrompts, useRevalidatePrompts, useSavedPrompts } from "@/lib/use-prompts-data"
 import { ChatMarkdown } from "./chat-markdown"
+import { PromptLibraryDialog } from "./prompt-library-dialog"
 
 interface ChatMessage {
   id: string
@@ -61,12 +58,10 @@ export function PanelChat() {
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set())
   const [showPrompts, setShowPrompts] = useState(true)
   const [libraryOpen, setLibraryOpen] = useState(false)
-  const [newSavedPromptText, setNewSavedPromptText] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const { data: quickPrompts, isLoading: quickPromptsLoading } = useQuickPrompts()
-  const { systemPrompts } = useSystemPrompts()
   const { savedPrompts } = useSavedPrompts(api.CURRENT_USER)
   const revalidatePrompts = useRevalidatePrompts()
 
@@ -105,7 +100,6 @@ export function PanelChat() {
   async function handleSend(text: string) {
     if (!text.trim() || !selectedAccountId) return
     const accountId = selectedAccountId
-    setLibraryOpen(false)
 
     const userMessage: ChatMessage = { id: Date.now().toString(), text: text.trim(), isUser: true, timestamp: new Date() }
     setMessages((prev) => [...prev, userMessage])
@@ -171,25 +165,13 @@ export function PanelChat() {
     }
   }
 
-  async function handleAddSavedPrompt() {
-    const text = newSavedPromptText.trim()
-    if (!text) return
-    try {
-      await api.saveSavedPrompt(api.CURRENT_USER, text)
-      setNewSavedPromptText("")
-      await revalidatePrompts()
-    } catch (err) {
-      toast.error("Couldn't save prompt", { description: err instanceof Error ? err.message : undefined })
-    }
-  }
-
-  async function handleDeleteSavedPrompt(id: number) {
-    try {
-      await api.deleteSavedPrompt(id, api.CURRENT_USER)
-      await revalidatePrompts()
-    } catch (err) {
-      toast.error("Couldn't remove prompt", { description: err instanceof Error ? err.message : undefined })
-    }
+  // Picking a prompt from the library only fills the input — it's the
+  // user's call whether to edit it before sending, same as typing it
+  // themselves. (Quick-prompt chips are the one exception that still sends
+  // immediately — see onClick below — since they're a one-click shortcut by design.)
+  function insertPrompt(text: string) {
+    setInputValue(text)
+    inputRef.current?.focus()
   }
 
   return (
@@ -436,88 +418,14 @@ export function PanelChat() {
               }}
             />
 
-            <Popover open={libraryOpen} onOpenChange={setLibraryOpen}>
-              <PopoverTrigger
-                title="Browse prompts"
-                className="flex size-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Library className="size-5" aria-hidden="true" />
-              </PopoverTrigger>
-              <PopoverContent align="end" side="top" className="w-80 p-0">
-                <Tabs defaultValue="system" className="gap-0">
-                  <TabsList className="m-2 mb-0">
-                    <TabsTrigger value="system">System prompts</TabsTrigger>
-                    <TabsTrigger value="mine">My prompts</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="system" className="max-h-72 overflow-y-auto p-2">
-                    {systemPrompts.length === 0 ? (
-                      <p className="px-2 py-4 text-center text-xs text-muted-foreground">No system prompts yet.</p>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        {systemPrompts.map((prompt) => (
-                          <button
-                            key={prompt.id}
-                            onClick={() => handleSend(prompt.prompt_text)}
-                            className="flex flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left hover:bg-muted"
-                          >
-                            <span className="text-xs font-semibold">{prompt.name}</span>
-                            <span className="line-clamp-2 text-[11px] text-muted-foreground">{prompt.prompt_text}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  <TabsContent value="mine" className="flex max-h-72 flex-col gap-2 overflow-y-auto p-2">
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        value={newSavedPromptText}
-                        onChange={(e) => setNewSavedPromptText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            handleAddSavedPrompt()
-                          }
-                        }}
-                        placeholder="Add a prompt to save…"
-                        className="h-8 flex-1 rounded-lg border bg-card px-2.5 text-xs placeholder:text-muted-foreground focus:outline-none"
-                      />
-                      <button
-                        onClick={handleAddSavedPrompt}
-                        disabled={!newSavedPromptText.trim()}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground disabled:opacity-50"
-                        aria-label="Add prompt"
-                      >
-                        <Plus className="size-4" aria-hidden="true" />
-                      </button>
-                    </div>
-                    {savedPrompts.length === 0 ? (
-                      <p className="px-1 py-4 text-center text-xs text-muted-foreground">
-                        Nothing saved yet — bookmark a prompt from the conversation, or add one above.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        {savedPrompts.map((prompt) => (
-                          <div key={prompt.id} className="group/item flex items-start gap-1 rounded-lg px-2.5 py-2 hover:bg-muted">
-                            <button onClick={() => handleSend(prompt.prompt_text)} className="min-w-0 flex-1 text-left">
-                              <span className="line-clamp-2 text-xs">{prompt.prompt_text}</span>
-                            </button>
-                            <button
-                              onClick={() => handleDeleteSavedPrompt(prompt.id)}
-                              aria-label="Remove saved prompt"
-                              className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/item:opacity-100 hover:text-destructive"
-                            >
-                              <Trash2 className="size-3.5" aria-hidden="true" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </PopoverContent>
-            </Popover>
+            <button
+              type="button"
+              onClick={() => setLibraryOpen(true)}
+              title="Browse prompts"
+              className="flex size-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Library className="size-5" aria-hidden="true" />
+            </button>
 
             <button
               onClick={() => handleSend(inputValue)}
@@ -532,6 +440,8 @@ export function PanelChat() {
           <p className="mt-2 text-center text-[10px] text-muted-foreground">AI can make mistakes. Verify important information.</p>
         </div>
       </div>
+
+      <PromptLibraryDialog open={libraryOpen} onOpenChange={setLibraryOpen} onSelectPrompt={insertPrompt} />
     </>
   )
 }
