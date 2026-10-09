@@ -24,6 +24,7 @@ import { useAccountContext } from "@/lib/account-context"
 import { useQuickPrompts, useRevalidatePrompts, useSavedPrompts } from "@/lib/use-prompts-data"
 import { ChatMarkdown } from "./chat-markdown"
 import { PromptLibraryDialog } from "./prompt-library-dialog"
+import { SavePromptDialog } from "./save-prompt-dialog"
 
 interface ChatMessage {
   id: string
@@ -58,6 +59,7 @@ export function PanelChat() {
   const [expandedSources, setExpandedSources] = useState<Set<string>>(new Set())
   const [showPrompts, setShowPrompts] = useState(true)
   const [libraryOpen, setLibraryOpen] = useState(false)
+  const [saveDialogText, setSaveDialogText] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -145,24 +147,22 @@ export function PanelChat() {
     setShowPrompts(true)
   }
 
-  // Toggle-save: a prompt already in "My Prompts" un-saves on click, same
-  // bookmark-icon convention as most apps. Triggered from the hover icon on
-  // a user message bubble — saving is about a prompt the user already sent
-  // and liked the answer to, not something picked before typing.
-  async function toggleSavedPrompt(text: string) {
+  // Bookmark icon on a user message bubble. Removing an already-saved
+  // prompt is instant (nothing to edit); saving a new one opens a small
+  // dialog to name it first — see SavePromptDialog.
+  async function handleBookmarkClick(text: string) {
     const existing = savedPrompts.find((p) => p.prompt_text === text)
-    try {
-      if (existing) {
+    if (existing) {
+      try {
         await api.deleteSavedPrompt(existing.id, api.CURRENT_USER)
-        toast.success("Removed from My Prompts")
-      } else {
-        await api.saveSavedPrompt(api.CURRENT_USER, text)
-        toast.success("Saved to My Prompts")
+        toast.success("Removed from Saved Prompts")
+        await revalidatePrompts()
+      } catch (err) {
+        toast.error("Couldn't remove prompt", { description: err instanceof Error ? err.message : undefined })
       }
-      await revalidatePrompts()
-    } catch (err) {
-      toast.error("Couldn't update My Prompts", { description: err instanceof Error ? err.message : undefined })
+      return
     }
+    setSaveDialogText(text)
   }
 
   // Picking a prompt from the library only fills the input — it's the
@@ -256,8 +256,8 @@ export function PanelChat() {
                     )}
                     {message.isUser && (
                       <button
-                        onClick={() => toggleSavedPrompt(message.text)}
-                        title={isSaved ? "Remove from My Prompts" : "Save to My Prompts"}
+                        onClick={() => handleBookmarkClick(message.text)}
+                        title={isSaved ? "Remove from Saved Prompts" : "Save to Saved Prompts"}
                         className={`mt-1.5 shrink-0 rounded-md p-1 transition-opacity ${
                           isSaved ? "text-primary opacity-100" : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary"
                         }`}
@@ -442,6 +442,13 @@ export function PanelChat() {
       </div>
 
       <PromptLibraryDialog open={libraryOpen} onOpenChange={setLibraryOpen} onSelectPrompt={insertPrompt} />
+      <SavePromptDialog
+        open={saveDialogText !== null}
+        onOpenChange={(next) => {
+          if (!next) setSaveDialogText(null)
+        }}
+        initialText={saveDialogText ?? ""}
+      />
     </>
   )
 }

@@ -26,12 +26,11 @@ const TRIGGER_OPTIONS: { value: TriggerType | typeof ALL; label: string }[] = [
   { value: "scheduled", label: "Scheduled" },
 ]
 
-const DAYS_OPTIONS: { label: string; days: number | undefined }[] = [
+const DAYS_OPTIONS: { label: string; days: number }[] = [
   { label: "Past 3 days", days: 3 },
   { label: "This week", days: 7 },
   { label: "Last 2 weeks", days: 14 },
   { label: "This month", days: 30 },
-  { label: "All time", days: undefined },
 ]
 
 const STATUS_META: Record<JobStatus, { label: string; classes: string; dot: string }> = {
@@ -57,7 +56,7 @@ function formatDuration(startedAt: string | null, completedAt: string | null) {
 
 export function RunHistoryTab() {
   const [trigger, setTrigger] = useState<TriggerType | typeof ALL>(ALL)
-  const [days, setDays] = useState<number | undefined>(undefined)
+  const [days, setDays] = useState<number>(30)
   const [accountId, setAccountId] = useState(ALL)
   const [researchGroupId, setResearchGroupId] = useState(ALL)
   const [page, setPage] = useState(0)
@@ -179,7 +178,7 @@ export function RunHistoryTab() {
 
         <div role="radiogroup" aria-label="Time window" className="flex flex-wrap gap-1.5">
           {DAYS_OPTIONS.map((option) => {
-            const active = days === option.days || (days === undefined && option.days === undefined)
+            const active = days === option.days
             return (
               <button
                 key={option.label}

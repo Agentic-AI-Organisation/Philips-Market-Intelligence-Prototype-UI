@@ -650,7 +650,7 @@ export function runGroup(groupId: string, accountId: string) {
 // empty-state chips. saved_prompts is each end-user's own personal list,
 // scoped by user_id only (global across accounts, not per-account).
 
-const MAX_QUICK_PROMPTS = 3
+export const MAX_QUICK_PROMPTS = 3
 
 let nextSystemPromptId = 1
 const systemPrompts: SystemPrompt[] = [
@@ -763,11 +763,14 @@ export function setQuickPrompt(id: number, enabled: boolean) {
   })
 }
 
+export const MAX_SAVED_PROMPTS = 50
+
 let nextSavedPromptId = 1
 const savedPrompts: SavedPrompt[] = [
   {
     id: nextSavedPromptId++,
     user_id: CURRENT_USER,
+    name: "Financial guidance summary",
     prompt_text: "Summarize the latest financial guidance in one paragraph.",
     created_at: "2026-09-20T00:00:00Z",
   },
@@ -779,13 +782,19 @@ export function listSavedPrompts(userId: string) {
   )
 }
 
-export function saveSavedPrompt(userId: string, promptText: string) {
+// Every save is a deliberate, named action now (see SavePromptDialog) rather
+// than a silent idempotent toggle, so no de-dupe-and-return-existing here —
+// each call always inserts, up to the per-user cap.
+export function saveSavedPrompt(userId: string, name: string, promptText: string) {
   return publicRequest<SavedPrompt>(() => {
-    const existing = savedPrompts.find((p) => p.user_id === userId && p.prompt_text === promptText)
-    if (existing) return existing
+    const count = savedPrompts.filter((p) => p.user_id === userId).length
+    if (count >= MAX_SAVED_PROMPTS) {
+      throw new ApiError(409, `You've reached the ${MAX_SAVED_PROMPTS}-prompt limit for saved prompts — remove one first.`)
+    }
     const row: SavedPrompt = {
       id: nextSavedPromptId++,
       user_id: userId,
+      name: name.trim() || "Untitled prompt",
       prompt_text: promptText,
       created_at: new Date().toISOString(),
     }

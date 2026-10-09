@@ -188,6 +188,7 @@ export interface SystemPrompt {
 export interface SavedPrompt {
   id: number
   user_id: string
+  name: string
   prompt_text: string
   created_at: string
 }

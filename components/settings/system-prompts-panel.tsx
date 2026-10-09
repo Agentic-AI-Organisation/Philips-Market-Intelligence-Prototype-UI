@@ -6,9 +6,11 @@ import { Pencil, Plus, Sparkles, Trash2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
 import * as api from "@/lib/mock-api"
-import type { SystemPrompt } from "@/lib/types"
+import { ApiError, type SystemPrompt } from "@/lib/types"
 import { useRevalidatePrompts, useSystemPrompts } from "@/lib/use-prompts-data"
 
 interface Draft {
@@ -79,7 +81,21 @@ export function SystemPromptsPanel() {
     }
   }
 
+  async function handleToggleQuickPrompt(id: number, enabled: boolean) {
+    try {
+      await api.setQuickPrompt(id, enabled)
+      await revalidate()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        toast.error(`Only ${api.MAX_QUICK_PROMPTS} quick prompts allowed`, { description: err.message })
+      } else {
+        toast.error("Couldn't update quick prompt", { description: err instanceof Error ? err.message : undefined })
+      }
+    }
+  }
+
   const formOpen = creating || editingId !== null
+  const quickPromptCount = systemPrompts.filter((p) => p.is_quick_prompt).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -87,8 +103,9 @@ export function SystemPromptsPanel() {
         <div>
           <h2 className="text-sm font-semibold">System prompts</h2>
           <p className="text-xs text-muted-foreground">
-            The full prompt library available to every user in the chat widget&apos;s prompt picker. Flip up to 3 of
-            these on in the Quick Prompts tab to also show them as chips before a conversation starts.
+            The full prompt library available to every user in the chat widget&apos;s prompt picker. Turn on
+            &quot;Quick prompt&quot; for up to {api.MAX_QUICK_PROMPTS} of these to also show them as chips before a
+            conversation starts.
           </p>
         </div>
         {!formOpen && (
@@ -97,6 +114,18 @@ export function SystemPromptsPanel() {
             New prompt
           </Button>
         )}
+      </div>
+
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5",
+            quickPromptCount >= api.MAX_QUICK_PROMPTS ? "bg-accent text-accent-foreground" : "bg-muted",
+          )}
+        >
+          {quickPromptCount} / {api.MAX_QUICK_PROMPTS} quick prompts selected
+        </span>
+        {quickPromptCount >= api.MAX_QUICK_PROMPTS && <span>Turn one off before adding another.</span>}
       </div>
 
       {formOpen && (
@@ -146,36 +175,41 @@ export function SystemPromptsPanel() {
         {!isLoading && systemPrompts.length === 0 && (
           <p className="text-sm text-muted-foreground">No system prompts yet — add the first one above.</p>
         )}
-        {systemPrompts.map((prompt) => (
-          <div key={prompt.id} className="flex items-start justify-between gap-3 rounded-lg border bg-card p-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+        {systemPrompts.map((prompt) => {
+          const disableToggleOn = !prompt.is_quick_prompt && quickPromptCount >= api.MAX_QUICK_PROMPTS
+          return (
+            <div key={prompt.id} className="flex items-start justify-between gap-3 rounded-lg border bg-card p-3">
+              <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium">{prompt.name}</span>
-                {prompt.is_quick_prompt && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">
-                    <Sparkles className="size-3" aria-hidden="true" />
-                    Quick prompt
-                  </span>
-                )}
+                <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{prompt.prompt_text}</p>
               </div>
-              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{prompt.prompt_text}</p>
+              <div className="flex shrink-0 items-center gap-3">
+                <label className={cn("flex items-center gap-1.5", disableToggleOn && "opacity-60")}>
+                  <Sparkles className="size-3.5 text-muted-foreground" aria-hidden="true" />
+                  <span className="text-xs text-muted-foreground">Quick prompt</span>
+                  <Switch
+                    checked={prompt.is_quick_prompt}
+                    disabled={disableToggleOn}
+                    onCheckedChange={(checked) => handleToggleQuickPrompt(prompt.id, checked)}
+                    aria-label={`${prompt.is_quick_prompt ? "Remove" : "Add"} ${prompt.name} as a quick prompt`}
+                  />
+                </label>
+                <Button variant="ghost" size="icon-sm" onClick={() => startEdit(prompt)} aria-label={`Edit ${prompt.name}`}>
+                  <Pencil aria-hidden="true" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={deletingId === prompt.id}
+                  onClick={() => handleDelete(prompt.id)}
+                  aria-label={`Delete ${prompt.name}`}
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+              </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1">
-              <Button variant="ghost" size="icon-sm" onClick={() => startEdit(prompt)} aria-label={`Edit ${prompt.name}`}>
-                <Pencil aria-hidden="true" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={deletingId === prompt.id}
-                onClick={() => handleDelete(prompt.id)}
-                aria-label={`Delete ${prompt.name}`}
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

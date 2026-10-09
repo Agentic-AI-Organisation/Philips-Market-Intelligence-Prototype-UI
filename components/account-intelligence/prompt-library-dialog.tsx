@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Plus, Search, Trash2, X } from "lucide-react"
+import { Search, Settings2, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -23,41 +23,24 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
   const { savedPrompts } = useSavedPrompts(api.CURRENT_USER)
   const revalidatePrompts = useRevalidatePrompts()
   const [query, setQuery] = useState("")
-  const [addingSaved, setAddingSaved] = useState(false)
-  const [newSavedText, setNewSavedText] = useState("")
 
-  // Fresh state every time it's reopened, rather than resuming wherever it
-  // was left (an in-progress "add" or a stale search from last time).
+  // Fresh search every time it's reopened, rather than resuming a stale
+  // query from last time.
   useEffect(() => {
-    if (open) {
-      setQuery("")
-      setAddingSaved(false)
-      setNewSavedText("")
-    }
+    if (open) setQuery("")
   }, [open])
 
   const q = query.trim().toLowerCase()
   const filteredSystemPrompts = systemPrompts.filter(
     (p) => p.name.toLowerCase().includes(q) || p.prompt_text.toLowerCase().includes(q),
   )
-  const filteredSavedPrompts = savedPrompts.filter((p) => p.prompt_text.toLowerCase().includes(q))
+  const filteredSavedPrompts = savedPrompts.filter(
+    (p) => p.name.toLowerCase().includes(q) || p.prompt_text.toLowerCase().includes(q),
+  )
 
   function selectPrompt(text: string) {
     onSelectPrompt(text)
     onOpenChange(false)
-  }
-
-  async function handleAddSaved() {
-    const text = newSavedText.trim()
-    if (!text) return
-    try {
-      await api.saveSavedPrompt(api.CURRENT_USER, text)
-      setNewSavedText("")
-      setAddingSaved(false)
-      await revalidatePrompts()
-    } catch (err) {
-      toast.error("Couldn't save prompt", { description: err instanceof Error ? err.message : undefined })
-    }
   }
 
   async function handleDeleteSaved(id: number) {
@@ -72,15 +55,23 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[70vh] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-lg">
-        <DialogHeader className="border-b p-4 pb-3">
+        <DialogHeader className="flex-row items-center justify-between border-b p-4 pr-10 pb-3 space-y-0">
           <DialogTitle>Prompt library</DialogTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toast.message("Prompt management is coming soon")}
+          >
+            <Settings2 data-icon="inline-start" aria-hidden="true" />
+            Manage prompts
+          </Button>
         </DialogHeader>
 
         <Tabs defaultValue="system" className="flex min-h-0 flex-1 flex-col gap-0">
           <div className="flex items-center gap-2 border-b p-3">
             <TabsList>
               <TabsTrigger value="system">System prompts</TabsTrigger>
-              <TabsTrigger value="mine">My prompts</TabsTrigger>
+              <TabsTrigger value="saved">Saved prompts</TabsTrigger>
             </TabsList>
           </div>
 
@@ -115,52 +106,14 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
             )}
           </TabsContent>
 
-          <TabsContent value="mine" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
-            {addingSaved ? (
-              <div className="flex items-start gap-1.5">
-                <Input
-                  value={newSavedText}
-                  onChange={(e) => setNewSavedText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault()
-                      handleAddSaved()
-                    }
-                    if (e.key === "Escape") {
-                      setAddingSaved(false)
-                      setNewSavedText("")
-                    }
-                  }}
-                  placeholder="Type a prompt to save…"
-                  className="bg-card"
-                  autoFocus
-                />
-                <Button size="icon" onClick={handleAddSaved} disabled={!newSavedText.trim()} aria-label="Save prompt">
-                  <Plus aria-hidden="true" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    setAddingSaved(false)
-                    setNewSavedText("")
-                  }}
-                  aria-label="Cancel"
-                >
-                  <X aria-hidden="true" />
-                </Button>
-              </div>
-            ) : (
-              <Button variant="outline" size="sm" className="self-start" onClick={() => setAddingSaved(true)}>
-                <Plus data-icon="inline-start" aria-hidden="true" />
-                Add saved prompt
-              </Button>
-            )}
-
+          <TabsContent value="saved" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+            <p className="px-1 text-xs text-muted-foreground">
+              {savedPrompts.length} / {api.MAX_SAVED_PROMPTS} saved
+            </p>
             {filteredSavedPrompts.length === 0 ? (
               <p className="px-1 py-6 text-center text-sm text-muted-foreground">
                 {savedPrompts.length === 0
-                  ? "Nothing saved yet — bookmark a prompt from a conversation, or add one above."
+                  ? "Nothing saved yet — bookmark a prompt from a conversation to add one."
                   : "No prompts match your search."}
               </p>
             ) : (
@@ -168,12 +121,13 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
                 {filteredSavedPrompts.map((prompt) => (
                   <div key={prompt.id} className="group/item flex items-start gap-1 rounded-lg px-3 py-2.5 hover:bg-muted">
                     <button onClick={() => selectPrompt(prompt.prompt_text)} className="min-w-0 flex-1 text-left">
-                      <span className="line-clamp-2 text-sm">{prompt.prompt_text}</span>
+                      <span className="block text-sm font-semibold">{prompt.name}</span>
+                      <span className="line-clamp-2 text-xs text-muted-foreground">{prompt.prompt_text}</span>
                     </button>
                     <button
                       onClick={() => handleDeleteSaved(prompt.id)}
                       aria-label="Remove saved prompt"
-                      className="shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/item:opacity-100 hover:text-destructive"
+                      className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/item:opacity-100 hover:text-destructive"
                     >
                       <Trash2 className="size-3.5" aria-hidden="true" />
                     </button>

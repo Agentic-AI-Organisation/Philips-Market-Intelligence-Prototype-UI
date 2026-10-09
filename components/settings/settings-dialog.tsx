@@ -1,17 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { CalendarClock, MessageSquareText, Sparkles } from "lucide-react"
+import { CalendarClock, MessageSquareText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ResearchConfigurationsPanel } from "./research-configurations-panel"
 import { SystemPromptsPanel } from "./system-prompts-panel"
-import { QuickPromptsPanel } from "./quick-prompts-panel"
 
 const SECTIONS = [
   { id: "research-configurations", label: "Research configurations", icon: CalendarClock },
   { id: "system-prompts", label: "System prompts", icon: MessageSquareText },
-  { id: "quick-prompts", label: "Quick prompts", icon: Sparkles },
 ] as const
 
 type SectionId = (typeof SECTIONS)[number]["id"]
@@ -59,7 +57,6 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           <div className="flex-1 overflow-y-auto p-5">
             {section === "research-configurations" && <ResearchConfigurationsPanel />}
             {section === "system-prompts" && <SystemPromptsPanel />}
-            {section === "quick-prompts" && <QuickPromptsPanel />}
           </div>
         </div>
       </DialogContent>
