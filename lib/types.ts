@@ -117,6 +117,81 @@ export interface ListRunHistoryParams {
   offset: number
 }
 
+// --- Account intelligence (research output + chat) -----------------------
+
+export interface GroupOutputEntry {
+  data: Record<string, unknown>
+  generated_at: string | null
+}
+
+export interface ActiveSignal {
+  text: string
+  date: string | null
+  topic?: string | null
+  title?: string | null
+}
+
+export interface GroupSummaryEntry {
+  summary: string
+  active_signals: ActiveSignal[]
+  generated_at: string | null
+}
+
+export interface RunState {
+  last_run_timestamp: string | null
+  last_run_status: string | null
+}
+
+export interface TriggerRunResult {
+  run_id: string
+  status: string
+  already_running: boolean
+}
+
+export interface ChatCitation {
+  url: string
+  date: string
+  source: string
+}
+
+export interface ChatSource {
+  index: number
+  title: string
+  citations: ChatCitation[]
+  research_group: string
+  sub_requirement: string
+  recency: string
+}
+
+export interface ChatResponse {
+  answer: string
+  sources: ChatSource[]
+}
+
+// --- Prompts (system prompts, quick prompts, saved prompts) --------------
+// Replaces the old per-account quick_prompts concept — prompts are global,
+// not account-scoped (the same prompt library applies everywhere), and
+// is_quick_prompt elevates up to 3 of them to the chat widget's empty-state
+// chips. Greenfield — no existing table/endpoint to migrate from.
+
+export interface SystemPrompt {
+  id: number
+  name: string
+  prompt_text: string
+  is_quick_prompt: boolean
+  created_at: string
+  updated_at: string
+  created_by: string
+  updated_by: string
+}
+
+export interface SavedPrompt {
+  id: number
+  user_id: string
+  prompt_text: string
+  created_at: string
+}
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {

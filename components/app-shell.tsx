@@ -1,8 +1,11 @@
 "use client"
 
-import { CalendarClock, ChevronDown, FlaskConical, ShieldCheck, User, Zap } from "lucide-react"
+import { useState } from "react"
+import { ChevronDown, Microscope, Settings, ShieldCheck, User, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRole } from "@/lib/role-context"
+import { AccountPicker } from "@/components/account-intelligence/account-picker"
+import { SettingsDialog } from "@/components/settings/settings-dialog"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -13,15 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+// Research configurations used to be a second top-level screen reachable
+// from the sidebar; it's now reached only through the admin-only Settings
+// button below, alongside the new prompt-management features — so this
+// shell no longer needs multi-screen switching, just the one main view.
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAdmin, setIsAdmin } = useRole()
-
-  const navItems = [
-    { label: "Account intelligence", icon: FlaskConical, href: "#", active: false },
-    ...(isAdmin
-      ? [{ label: "Research scheduling", icon: CalendarClock, href: "#", active: true }]
-      : []),
-  ]
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -34,35 +35,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             Account<span className="text-primary">360</span>
           </span>
         </div>
-        <nav aria-label="Main" className="flex flex-col gap-1 p-3">
-          {navItems.map((item) => (
-            <a
-              key={item.label}
-              href={item.href}
-              aria-current={item.active ? "page" : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                item.active
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <item.icon className="size-4" aria-hidden="true" />
-              {item.label}
-            </a>
-          ))}
+
+        <nav aria-label="Main" className="flex flex-1 flex-col gap-1 p-3">
+          <span className="flex items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground">
+            <Microscope className="size-4 shrink-0" aria-hidden="true" />
+            Account intelligence
+          </span>
         </nav>
+
+        {isAdmin && (
+          <div className="border-t p-3">
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Settings className="size-4 shrink-0" aria-hidden="true" />
+              Settings
+            </button>
+          </div>
+        )}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-15 items-center justify-between gap-4 border-b bg-card px-4 md:px-6">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Admin</span>
-            <span className="text-muted-foreground" aria-hidden="true">
-              /
-            </span>
-            <span className="font-medium">Research scheduling</span>
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav aria-label="Breadcrumb" className="hidden items-center gap-2 text-sm sm:flex">
+              <span className="text-muted-foreground">Account360</span>
+              <span className="text-muted-foreground" aria-hidden="true">
+                /
+              </span>
+              <span className="font-medium">Account intelligence</span>
+            </nav>
+            <AccountPicker />
+          </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
@@ -85,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <p className="px-2 py-1.5 text-xs text-muted-foreground">
-                Turn this off to see the 401 state and the hidden nav item.
+                Turn this off to see the 401 state and hide the Settings button.
               </p>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -97,6 +103,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {"© 2026 Philips My App | All Rights Reserved."}
         </footer>
       </div>
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

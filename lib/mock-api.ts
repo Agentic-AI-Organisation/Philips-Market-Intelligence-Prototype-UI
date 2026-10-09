@@ -1,4 +1,5 @@
 import { computeNextRunAt } from "./schedule-time"
+import { getMockChatResponse } from "./mock-chat-responses"
 import {
   ApiError,
   EFFORTS,
@@ -7,14 +8,21 @@ import {
   type BulkCreateItemResult,
   type BulkCreateResponse,
   type BulkCreateSchedulePayload,
+  type ChatResponse,
   type CreateSchedulePayload,
+  type GroupOutputEntry,
+  type GroupSummaryEntry,
   type JobStatus,
   type ListRunHistoryParams,
   type ListSchedulesParams,
   type ResearchAreaModelConfig,
   type RunHistoryJob,
+  type RunState,
+  type SavedPrompt,
   type ScheduleConfig,
   type ScheduleCoverage,
+  type SystemPrompt,
+  type TriggerRunResult,
   type TriggerType,
   type UpdateSchedulePayload,
 } from "./types"
@@ -34,7 +42,11 @@ import {
  *   PATCH  /research-areas/{id}/model-config       -> updateModelConfig
  */
 
-const CURRENT_USER = "sinan.abbas@philips.com"
+// Single simulated identity for this prototype (no real auth) — used both
+// as the "admin" for created_by/updated_by and as "the current user" for
+// saved prompts, same way a real signed-in user's identity would flow
+// through both roles.
+export const CURRENT_USER = "sinan.abbas@philips.com"
 let hasAdminRole = true
 
 export function setMockAdminRole(value: boolean) {
@@ -46,6 +58,13 @@ const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
 async function adminRequest<T>(fn: () => T): Promise<T> {
   await delay()
   if (!hasAdminRole) throw new ApiError(401, "Missing required role: research.admin")
+  return structuredClone(fn())
+}
+
+// Research Insights isn't admin-gated in the real app (only Research
+// Scheduling is) — same shape as adminRequest, minus the role check.
+async function publicRequest<T>(fn: () => T): Promise<T> {
+  await delay()
   return structuredClone(fn())
 }
 
@@ -431,6 +450,367 @@ function generateRunHistory(count: number): RunHistoryJob[] {
 }
 
 const runHistoryJobs: RunHistoryJob[] = generateRunHistory(600)
+
+// --- Account intelligence (research output, status, chat) ----------------
+// Only Acc_001 ("HCA") has rich seeded output below — every other account
+// starts with no research output, same as a real account nobody has run
+// research for yet, so the empty states get exercised too.
+
+function outputKey(accountId: string, groupId: string) {
+  return `${accountId}::${groupId}`
+}
+
+const researchOutputs: Record<string, GroupOutputEntry> = {
+  [outputKey("Acc_001", "RG_002")]: {
+    generated_at: "2026-09-28T10:00:00Z",
+    data: {
+      hospital_overview: {
+        title: "HCA Healthcare corporate profile",
+        details:
+          "Integrated hospital and ambulatory network across the U.S. and U.K., operating 190 hospitals and approximately 2,500 ambulatory sites of care as of year-end 2025.",
+        recency: "within_24_months",
+        citations: [
+          {
+            source: "HCA Healthcare Investor Relations - Corporate Profile",
+            url: "https://investor.hcahealthcare.com/corporate-profile/default.aspx",
+            date: "2026-01-15",
+          },
+        ],
+      },
+      organizational_footprint: [
+        {
+          title: "190 hospitals, 50,436 licensed beds disclosed for year-end 2025",
+          details:
+            "Of the 190 hospitals, 179 are general acute care hospitals. Total licensed bed count across the network is 50,436.",
+          recency: "within_24_months",
+          citations: [
+            {
+              source: "SEC - HCA Healthcare, Inc. Form 10-K",
+              url: "https://www.sec.gov/Archives/edgar/data/860730/000119312526044769/hca-20251231.htm",
+              date: "2026-02-10",
+            },
+          ],
+        },
+        {
+          title: "~2,500 ambulatory sites of care across 19 states + U.K.",
+          details:
+            "Ambulatory sites include surgery centers, freestanding emergency rooms, urgent care centers, and physician clinics.",
+          recency: "within_24_months",
+          citations: [
+            {
+              source: "HCA Healthcare Investor Relations - Quarterly Results",
+              url: "https://investor.hcahealthcare.com/financials/quarterly-results/default.aspx",
+              date: "Not found",
+            },
+          ],
+        },
+        {
+          title: "Workforce of approximately 320,000 colleagues",
+          details: "Workforce size disclosure tied to 2025 impact reporting.",
+          recency: "within_24_months",
+          citations: [{ source: "HCA Healthcare Impact Report", url: "https://www.hcahealthcareimpact.com/", date: "Not found" }],
+        },
+      ],
+    },
+  },
+  [outputKey("Acc_001", "RG_003")]: {
+    generated_at: "2026-09-25T06:00:00Z",
+    data: {
+      strategy_transformation_themes: [
+        {
+          title: "Scaling outpatient footprint, increasing capital investment",
+          details:
+            "2025 performance-year messaging emphasizes expanding capacity and advancing clinical technology offerings alongside outpatient network growth.",
+          recency: "within_24_months",
+          citations: [{ source: "HCA Healthcare Impact Report", url: "https://www.hcahealthcareimpact.com/", date: "2026-01-01" }],
+        },
+        {
+          title: "Network expansion and workforce development reiterated in 2026 guidance",
+          details: "Enterprise strategy emphasis on network expansion, workforce development, and advancing clinical capabilities.",
+          recency: "within_24_months",
+          citations: [
+            {
+              source: "HCA Healthcare Investor Relations",
+              url: "https://investor.hcahealthcare.com/news/news-details/2026/HCA-Healthcare-Reports-Fourth-Quarter-2025-Results/default.aspx",
+              date: "2026-01-27",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  [outputKey("Acc_001", "RG_001")]: {
+    generated_at: "2026-09-29T14:00:00Z",
+    data: {
+      awards_recognitions: [
+        {
+          title: "Healthgrades 2025 Patient Safety Excellence Award — 100 hospitals recognized",
+          details: "Recognizes the top 10% of hospitals nationally for patient safety performance.",
+          recency: "within_24_months",
+          citations: [
+            {
+              source: "HCA Healthcare Impact Report (Awards and recognition page)",
+              url: "https://www.hcahealthcareimpact.com/our-network/awards-and-recognition/",
+              date: "2026-04-10",
+            },
+          ],
+        },
+        {
+          title: "Premier 2025 100 Top Hospitals — 33 HCA hospitals recognized",
+          details: "Multiple HCA divisions also recognized among Premier's Top 15 Health Systems.",
+          recency: "within_24_months",
+          citations: [
+            {
+              source: "HCA Healthcare Impact Report (Awards and recognition page)",
+              url: "https://www.hcahealthcareimpact.com/our-network/awards-and-recognition/",
+              date: "2026-04-10",
+            },
+          ],
+        },
+      ],
+    },
+  },
+}
+
+const researchSummaries: Record<string, GroupSummaryEntry> = {
+  [outputKey("Acc_001", "RG_002")]: {
+    generated_at: "2026-09-28T10:00:00Z",
+    summary:
+      "HCA Healthcare operates an integrated network of 190 hospitals and ~2,500 ambulatory sites across 19 states and the U.K., supported by a workforce of approximately 320,000 colleagues.",
+    active_signals: [
+      { text: "190 hospitals, 50,436 licensed beds", date: "2026-02-10", topic: "organizational_footprint" },
+      { text: "Workforce of ~320,000 colleagues", date: "2026-01-01", topic: "organizational_footprint" },
+    ],
+  },
+  [outputKey("Acc_001", "RG_003")]: {
+    generated_at: "2026-09-25T06:00:00Z",
+    summary:
+      "Growth strategy is centered on scaling the outpatient footprint and increasing capital investment, with network expansion and workforce development reiterated in 2026 guidance.",
+    active_signals: [
+      { text: "Outpatient footprint scaling, higher capital investment", date: "2026-01-01", topic: "strategy_transformation_themes" },
+    ],
+  },
+  [outputKey("Acc_001", "RG_001")]: {
+    generated_at: "2026-09-29T14:00:00Z",
+    summary: "Two major quality/safety recognitions landed in 2025: a Healthgrades Patient Safety Excellence Award and a Premier 100 Top Hospitals placement.",
+    active_signals: [
+      { text: "Healthgrades 2025 Patient Safety Excellence Award (100 hospitals)", date: "2026-04-10", topic: "awards_recognitions" },
+      { text: "Premier 2025 100 Top Hospitals (33 HCA hospitals)", date: "2026-04-10", topic: "awards_recognitions" },
+    ],
+  },
+}
+
+const runStatuses = new Map<string, RunState>()
+
+export function getGroupOutput(accountId: string, groupId: string) {
+  return publicRequest<GroupOutputEntry | null>(() => researchOutputs[outputKey(accountId, groupId)] ?? null)
+}
+
+export function getGroupSummary(accountId: string, groupId: string) {
+  return publicRequest<GroupSummaryEntry | null>(() => researchSummaries[outputKey(accountId, groupId)] ?? null)
+}
+
+export function getGroupStatus(accountId: string, groupId: string) {
+  return publicRequest<RunState>(() => {
+    const key = outputKey(accountId, groupId)
+    const existing = runStatuses.get(key)
+    if (existing) return existing
+    const output = researchOutputs[key]
+    const seeded: RunState = {
+      last_run_timestamp: output?.generated_at ?? null,
+      last_run_status: output ? "completed" : null,
+    }
+    runStatuses.set(key, seeded)
+    return seeded
+  })
+}
+
+// Simulates triggering a research run: flips status to "running" immediately,
+// then "completes" it ~4s later and bumps generated_at — long enough to see
+// the "Running…" state and the 8s poll (in the hook) pick up the transition.
+export function runGroup(groupId: string, accountId: string) {
+  return publicRequest<TriggerRunResult>(() => {
+    const key = outputKey(accountId, groupId)
+    const prior = runStatuses.get(key)
+    runStatuses.set(key, { last_run_timestamp: prior?.last_run_timestamp ?? null, last_run_status: "running" })
+    setTimeout(() => {
+      const generatedAt = new Date().toISOString()
+      runStatuses.set(key, { last_run_timestamp: generatedAt, last_run_status: "completed" })
+      const existingOutput = researchOutputs[key]
+      if (existingOutput) researchOutputs[key] = { ...existingOutput, generated_at: generatedAt }
+    }, 4000)
+    return { run_id: crypto.randomUUID(), status: "queued", already_running: false }
+  })
+}
+
+// --- System prompts, quick prompts, saved prompts -------------------------
+// Global, not account-scoped — replaces the old per-account quick_prompts
+// idea entirely. system_prompts is the one admin-curated library; the
+// is_quick_prompt flag elevates up to 3 of its rows to the chat widget's
+// empty-state chips. saved_prompts is each end-user's own personal list,
+// scoped by user_id only (global across accounts, not per-account).
+
+const MAX_QUICK_PROMPTS = 3
+
+let nextSystemPromptId = 1
+const systemPrompts: SystemPrompt[] = [
+  {
+    name: "Hospital footprint",
+    prompt_text: "How many hospitals and beds does this account operate?",
+    is_quick_prompt: true,
+  },
+  {
+    name: "Workforce size",
+    prompt_text: "What is the workforce size and patient volume?",
+    is_quick_prompt: true,
+  },
+  {
+    name: "Recent growth",
+    prompt_text: "What growth or expansion happened recently?",
+    is_quick_prompt: true,
+  },
+  {
+    name: "2025 highlights",
+    prompt_text: "What happened in 2025?",
+    is_quick_prompt: false,
+  },
+  {
+    name: "Awards and recognition",
+    prompt_text: "What awards or industry recognition has this account received?",
+    is_quick_prompt: false,
+  },
+].map((seed) => ({
+  id: nextSystemPromptId++,
+  created_at: "2026-09-15T00:00:00Z",
+  updated_at: "2026-09-15T00:00:00Z",
+  created_by: CURRENT_USER,
+  updated_by: CURRENT_USER,
+  ...seed,
+}))
+
+function findSystemPrompt(id: number): SystemPrompt {
+  const row = systemPrompts.find((p) => p.id === id)
+  if (!row) throw new ApiError(404, `System prompt ${id} not found`)
+  return row
+}
+
+// GET /system-prompts — the full library, any authenticated user (used by
+// the chat widget's "browse prompts" picker as well as the admin panel).
+export function listSystemPrompts() {
+  return publicRequest<SystemPrompt[]>(() => [...systemPrompts].sort((a, b) => a.id - b.id))
+}
+
+// GET /prompts — just the ≤3 quick-prompt chips shown in the chat widget's
+// empty state. Kept as its own function/shape so the chat widget's call
+// site doesn't need to know about the admin-only fields on SystemPrompt.
+export function listQuickPrompts() {
+  return publicRequest<SystemPrompt[]>(() =>
+    systemPrompts.filter((p) => p.is_quick_prompt).sort((a, b) => a.id - b.id),
+  )
+}
+
+export function createSystemPrompt(payload: { name: string; prompt_text: string }) {
+  return adminRequest<SystemPrompt>(() => {
+    const now = new Date().toISOString()
+    const row: SystemPrompt = {
+      id: nextSystemPromptId++,
+      name: payload.name,
+      prompt_text: payload.prompt_text,
+      is_quick_prompt: false,
+      created_at: now,
+      updated_at: now,
+      created_by: CURRENT_USER,
+      updated_by: CURRENT_USER,
+    }
+    systemPrompts.push(row)
+    return row
+  })
+}
+
+export function updateSystemPrompt(id: number, payload: { name?: string; prompt_text?: string }) {
+  return adminRequest<SystemPrompt>(() => {
+    const row = findSystemPrompt(id)
+    Object.assign(row, payload, { updated_at: new Date().toISOString(), updated_by: CURRENT_USER })
+    return row
+  })
+}
+
+export function deleteSystemPrompt(id: number) {
+  return adminRequest<void>(() => {
+    const index = systemPrompts.findIndex((p) => p.id === id)
+    if (index === -1) throw new ApiError(404, `System prompt ${id} not found`)
+    systemPrompts.splice(index, 1)
+  })
+}
+
+// PATCH /system-prompts/{id}/quick-prompt — dedicated enable/disable
+// endpoint (same convention as schedule-config's enable/disable), rather
+// than folding the flag into the general edit form. Enabling a 4th quick
+// prompt is a 409, same shape as ScheduleConflictError elsewhere.
+export function setQuickPrompt(id: number, enabled: boolean) {
+  return adminRequest<SystemPrompt>(() => {
+    const row = findSystemPrompt(id)
+    if (enabled && !row.is_quick_prompt) {
+      const activeCount = systemPrompts.filter((p) => p.is_quick_prompt).length
+      if (activeCount >= MAX_QUICK_PROMPTS) {
+        throw new ApiError(409, `Only ${MAX_QUICK_PROMPTS} quick prompts can be active at once — turn one off first.`)
+      }
+    }
+    row.is_quick_prompt = enabled
+    row.updated_at = new Date().toISOString()
+    row.updated_by = CURRENT_USER
+    return row
+  })
+}
+
+let nextSavedPromptId = 1
+const savedPrompts: SavedPrompt[] = [
+  {
+    id: nextSavedPromptId++,
+    user_id: CURRENT_USER,
+    prompt_text: "Summarize the latest financial guidance in one paragraph.",
+    created_at: "2026-09-20T00:00:00Z",
+  },
+]
+
+export function listSavedPrompts(userId: string) {
+  return publicRequest<SavedPrompt[]>(() =>
+    savedPrompts.filter((p) => p.user_id === userId).sort((a, b) => b.id - a.id),
+  )
+}
+
+export function saveSavedPrompt(userId: string, promptText: string) {
+  return publicRequest<SavedPrompt>(() => {
+    const existing = savedPrompts.find((p) => p.user_id === userId && p.prompt_text === promptText)
+    if (existing) return existing
+    const row: SavedPrompt = {
+      id: nextSavedPromptId++,
+      user_id: userId,
+      prompt_text: promptText,
+      created_at: new Date().toISOString(),
+    }
+    savedPrompts.push(row)
+    return row
+  })
+}
+
+export function deleteSavedPrompt(id: number, userId: string) {
+  return publicRequest<void>(() => {
+    const index = savedPrompts.findIndex((p) => p.id === id)
+    if (index === -1 || savedPrompts[index].user_id !== userId) {
+      throw new ApiError(404, `Saved prompt ${id} not found`)
+    }
+    savedPrompts.splice(index, 1)
+  })
+}
+
+// A bit slower than the default mock delay — long enough that the chat
+// widget's typing-dots indicator actually reads as "thinking" rather than
+// just flashing.
+export async function sendChatQuery(accountId: string, query: string): Promise<ChatResponse> {
+  await delay(900)
+  return structuredClone(getMockChatResponse(accountId, query))
+}
 
 export function listRunHistory(params: ListRunHistoryParams) {
   return adminRequest(() => {

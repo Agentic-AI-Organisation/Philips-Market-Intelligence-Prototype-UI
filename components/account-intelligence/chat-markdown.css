@@ -1,0 +1,85 @@
+@reference "../../app/globals.css";
+
+.chat-markdown h1 {
+  @apply mt-4 mb-2 text-lg font-bold;
+}
+.chat-markdown h2 {
+  @apply mt-3 mb-1.5 text-base font-bold;
+}
+.chat-markdown h3 {
+  @apply mt-3 mb-1 text-sm font-bold;
+}
+.chat-markdown h4,
+.chat-markdown h5,
+.chat-markdown h6 {
+  @apply mt-2 mb-1 text-sm font-semibold;
+}
+
+.chat-markdown p {
+  @apply mb-2 text-sm leading-relaxed;
+}
+.chat-markdown p:last-child {
+  @apply mb-0;
+}
+
+.chat-markdown strong {
+  @apply font-semibold;
+}
+.chat-markdown em {
+  @apply italic;
+}
+
+.chat-markdown a {
+  @apply text-primary underline decoration-primary/20 underline-offset-2 transition-colors hover:decoration-primary;
+}
+
+.chat-markdown ul {
+  @apply my-1.5 list-disc pl-5;
+}
+.chat-markdown ol {
+  @apply my-1.5 list-decimal pl-5;
+}
+.chat-markdown li {
+  @apply mb-0.5 text-sm leading-relaxed;
+}
+.chat-markdown li:has(strong):last-child,
+.chat-markdown ol > li:last-child,
+.chat-markdown ul > li:last-child {
+  @apply mb-1;
+}
+.chat-markdown li > ul,
+.chat-markdown li > ol {
+  @apply my-0.5;
+}
+
+.chat-markdown blockquote {
+  @apply my-2 border-l-4 border-primary/20 bg-accent/60 py-1 pl-3 text-sm italic text-muted-foreground;
+}
+
+.chat-markdown code {
+  @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-pink-600;
+}
+.chat-markdown pre {
+  @apply my-2 overflow-x-auto rounded-lg bg-foreground p-3;
+}
+.chat-markdown pre code {
+  @apply bg-transparent p-0 text-xs text-background;
+}
+
+.chat-markdown table {
+  @apply my-0 border-collapse text-xs;
+}
+.chat-markdown th {
+  @apply border bg-muted px-2 py-1.5 text-left font-semibold;
+}
+.chat-markdown td {
+  @apply border px-2 py-1.5 text-muted-foreground;
+}
+
+.chat-markdown hr {
+  @apply my-3 border-border;
+}
+
+.chat-markdown .chat-md-error {
+  @apply rounded border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive;
+}

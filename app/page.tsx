@@ -1,13 +1,18 @@
+"use client"
+
 import { AppShell } from "@/components/app-shell"
-import { AdminPage } from "@/components/admin/admin-page"
+import { ResearchInsightsPage } from "@/components/account-intelligence/research-insights-page"
 import { RoleProvider } from "@/lib/role-context"
+import { AccountProvider } from "@/lib/account-context"
 
 export default function Page() {
   return (
     <RoleProvider>
-      <AppShell>
-        <AdminPage />
-      </AppShell>
+      <AccountProvider>
+        <AppShell>
+          <ResearchInsightsPage />
+        </AppShell>
+      </AccountProvider>
     </RoleProvider>
   )
 }

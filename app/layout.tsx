@@ -7,9 +7,9 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'Research Scheduling · Account360',
+  title: 'Account360',
   description:
-    'Admin console for scheduling account research runs and configuring the AI model used per research area.',
+    'Account research insights and chat, plus an admin console for scheduling research runs and configuring the AI model used per research area.',
   generator: 'v0.app',
   icons: {
     icon: [

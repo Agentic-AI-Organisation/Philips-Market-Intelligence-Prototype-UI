@@ -1,14 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { CalendarClock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useModelConfig } from "@/lib/use-admin-data"
 import { ApiError } from "@/lib/types"
-import { SchedulesTab } from "./schedules-tab"
-import { ModelConfigTab } from "./model-config-tab"
-import { RunHistoryTab } from "./run-history-tab"
-import { NoAccess } from "./no-access"
+import { SchedulesTab } from "@/components/admin/schedules-tab"
+import { ModelConfigTab } from "@/components/admin/model-config-tab"
+import { RunHistoryTab } from "@/components/admin/run-history-tab"
+import { NoAccess } from "@/components/admin/no-access"
 
 const TABS = [
   { id: "schedules", label: "Schedules" },
@@ -18,29 +17,21 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"]
 
-export function AdminPage() {
+// The former standalone "Research scheduling" screen — now a panel inside
+// the Settings dialog instead of its own sidebar nav item. The outer page
+// header card is gone (the dialog already supplies that chrome); everything
+// else (the 3-tab switcher and its content) is unchanged.
+export function ResearchConfigurationsPanel() {
   const [tab, setTab] = useState<TabId>("schedules")
   const { error } = useModelConfig()
 
   if (error instanceof ApiError && error.status === 401) return <NoAccess />
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col gap-5">
-      <section className="flex items-center gap-4 rounded-xl border bg-card p-5">
-        <span className="flex size-11 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <CalendarClock className="size-5" aria-hidden="true" />
-        </span>
-        <div className="flex flex-col gap-0.5">
-          <h1 className="text-lg font-semibold tracking-tight">Research scheduling</h1>
-          <p className="text-sm text-muted-foreground">
-            Automate research runs per account and choose the model each research area uses.
-          </p>
-        </div>
-      </section>
-
+    <div className="flex flex-col gap-4">
       <div
         role="tablist"
-        aria-label="Admin sections"
+        aria-label="Research configuration sections"
         className="flex gap-1 overflow-x-auto rounded-xl border bg-card p-1.5"
       >
         {TABS.map((t) => (
