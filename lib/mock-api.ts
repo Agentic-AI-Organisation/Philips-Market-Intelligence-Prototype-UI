@@ -655,28 +655,33 @@ export const MAX_QUICK_PROMPTS = 3
 let nextSystemPromptId = 1
 const systemPrompts: SystemPrompt[] = [
   {
-    name: "Hospital footprint",
-    prompt_text: "How many hospitals and beds does this account operate?",
+    name: "Hospital & bed footprint",
+    prompt_text:
+      "Give me a complete breakdown of this account's hospital footprint for my account-planning notes — total hospital count, licensed bed capacity, how many facilities are general acute care versus specialty, and the number of ambulatory or outpatient sites. Note which states or regions they operate in, and flag anything that's changed materially in the last two years.",
     is_quick_prompt: true,
   },
   {
-    name: "Workforce size",
-    prompt_text: "What is the workforce size and patient volume?",
+    name: "Workforce & patient volume",
+    prompt_text:
+      "I need the workforce and patient-volume picture for this account for an upcoming QBR — total employee headcount, annual patient encounters, and admissions for the most recent fiscal year. Call out anything suggesting they're scaling capacity, like hiring surges or new facility openings, so I can flag it to my team.",
     is_quick_prompt: true,
   },
   {
-    name: "Recent growth",
-    prompt_text: "What growth or expansion happened recently?",
+    name: "Growth & expansion signals",
+    prompt_text:
+      "Summarize this account's growth and expansion activity over the last 12 months — new facility openings, moves into new regions or service lines, and any stated plans for the year ahead. I want enough context to tell whether they're in an aggressive growth phase or consolidating, since that changes how we should approach the account.",
     is_quick_prompt: true,
   },
   {
-    name: "2025 highlights",
-    prompt_text: "What happened in 2025?",
+    name: "2025 year-in-review",
+    prompt_text:
+      "Pull together everything notable that happened with this account in 2025 — major announcements, industry awards or recognition, leadership changes, and any operational or financial milestones. Organize it chronologically where possible so I can use it as talking points for an executive briefing.",
     is_quick_prompt: false,
   },
   {
-    name: "Awards and recognition",
-    prompt_text: "What awards or industry recognition has this account received?",
+    name: "Pre-call briefing: full snapshot",
+    prompt_text:
+      "I have a call with this account's leadership next week — give me a one-page pre-call briefing covering their current hospital and bed footprint, workforce size, any growth or expansion activity from the last year, and the most significant thing that happened with the account in 2025. Keep it skimmable, not a wall of text.",
     is_quick_prompt: false,
   },
 ].map((seed) => ({
@@ -770,8 +775,9 @@ const savedPrompts: SavedPrompt[] = [
   {
     id: nextSavedPromptId++,
     user_id: CURRENT_USER,
-    name: "Financial guidance summary",
-    prompt_text: "Summarize the latest financial guidance in one paragraph.",
+    name: "Guidance + growth read for QBR prep",
+    prompt_text:
+      "Summarize this account's latest quarterly financial guidance in a tight paragraph, and tell me whether it signals continued growth and expansion or a pullback — I use this to prep my forecast notes before QBRs, so keep it focused on the directional read, not the raw numbers.",
     created_at: "2026-09-20T00:00:00Z",
   },
 ]
