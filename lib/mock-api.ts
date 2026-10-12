@@ -809,6 +809,16 @@ export function saveSavedPrompt(userId: string, name: string, promptText: string
   })
 }
 
+export function updateSavedPrompt(id: number, userId: string, payload: { name?: string; prompt_text?: string }) {
+  return publicRequest<SavedPrompt>(() => {
+    const row = savedPrompts.find((p) => p.id === id)
+    if (!row || row.user_id !== userId) throw new ApiError(404, `Saved prompt ${id} not found`)
+    if (payload.name !== undefined) row.name = payload.name
+    if (payload.prompt_text !== undefined) row.prompt_text = payload.prompt_text
+    return row
+  })
+}
+
 export function deleteSavedPrompt(id: number, userId: string) {
   return publicRequest<void>(() => {
     const index = savedPrompts.findIndex((p) => p.id === id)

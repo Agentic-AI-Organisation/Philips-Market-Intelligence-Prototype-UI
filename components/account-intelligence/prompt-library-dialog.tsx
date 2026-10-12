@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { toast } from "sonner"
-import { Search, Settings2, Trash2 } from "lucide-react"
+import { Search, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import * as api from "@/lib/mock-api"
-import { useRevalidatePrompts, useSavedPrompts, useSystemPrompts } from "@/lib/use-prompts-data"
+import { useSavedPrompts, useSystemPrompts } from "@/lib/use-prompts-data"
+import { ManagePromptsDialog } from "@/components/account-intelligence/manage-prompts-dialog"
 
 interface PromptLibraryDialogProps {
   open: boolean
@@ -21,8 +21,8 @@ interface PromptLibraryDialogProps {
 export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: PromptLibraryDialogProps) {
   const { systemPrompts } = useSystemPrompts()
   const { savedPrompts } = useSavedPrompts(api.CURRENT_USER)
-  const revalidatePrompts = useRevalidatePrompts()
   const [query, setQuery] = useState("")
+  const [manageOpen, setManageOpen] = useState(false)
 
   // Fresh search every time it's reopened, rather than resuming a stale
   // query from last time.
@@ -43,24 +43,19 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
     onOpenChange(false)
   }
 
-  async function handleDeleteSaved(id: number) {
-    try {
-      await api.deleteSavedPrompt(id, api.CURRENT_USER)
-      await revalidatePrompts()
-    } catch (err) {
-      toast.error("Couldn't remove prompt", { description: err instanceof Error ? err.message : undefined })
-    }
-  }
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[70vh] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-lg">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex h-[70vh] max-w-[90vw] flex-col gap-0 p-0 sm:max-w-lg">
         <DialogHeader className="flex-row items-center justify-between border-b p-4 pr-10 pb-3 space-y-0">
           <DialogTitle>Prompt library</DialogTitle>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toast.message("Prompt management is coming soon")}
+            onClick={() => {
+              onOpenChange(false)
+              setManageOpen(true)
+            }}
           >
             <Settings2 data-icon="inline-start" aria-hidden="true" />
             Manage prompts
@@ -119,19 +114,14 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
             ) : (
               <div className="flex flex-col gap-1">
                 {filteredSavedPrompts.map((prompt) => (
-                  <div key={prompt.id} className="group/item flex items-start gap-1 rounded-lg px-3 py-2.5 hover:bg-muted">
-                    <button onClick={() => selectPrompt(prompt.prompt_text)} className="min-w-0 flex-1 text-left">
-                      <span className="block text-sm font-semibold">{prompt.name}</span>
-                      <span className="line-clamp-2 text-xs text-muted-foreground">{prompt.prompt_text}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSaved(prompt.id)}
-                      aria-label="Remove saved prompt"
-                      className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover/item:opacity-100 hover:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" aria-hidden="true" />
-                    </button>
-                  </div>
+                  <button
+                    key={prompt.id}
+                    onClick={() => selectPrompt(prompt.prompt_text)}
+                    className="flex flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left hover:bg-muted"
+                  >
+                    <span className="text-sm font-semibold">{prompt.name}</span>
+                    <span className="line-clamp-2 text-xs text-muted-foreground">{prompt.prompt_text}</span>
+                  </button>
                 ))}
               </div>
             )}
@@ -139,5 +129,7 @@ export function PromptLibraryDialog({ open, onOpenChange, onSelectPrompt }: Prom
         </Tabs>
       </DialogContent>
     </Dialog>
+    <ManagePromptsDialog open={manageOpen} onOpenChange={setManageOpen} />
+    </>
   )
 }
