@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useState } from "react"
 import { useAccounts } from "./use-admin-data"
 import type { Account } from "./types"
 
@@ -14,16 +14,13 @@ interface AccountContextValue {
 
 const AccountContext = createContext<AccountContextValue | null>(null)
 
-// Mirrors itaap-commercialit-account-intelligence-ui's ClientContext —
-// one account selected at a time, shared across the whole app (the account
-// picker lives in the shared header, same as the real Topbar).
+// One account selected at a time, shared across the whole app. Unlike the
+// old dropdown-based nav, nothing is auto-selected on load — the Accounts
+// table is the landing view, and selectedAccountId stays null until the
+// user clicks an account row (see app/page.tsx).
 export function AccountProvider({ children }: { children: React.ReactNode }) {
   const { accounts, isLoading } = useAccounts()
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!selectedAccountId && accounts.length > 0) setSelectedAccountId(accounts[0].account_id)
-  }, [accounts, selectedAccountId])
 
   const selectedAccount = accounts.find((a) => a.account_id === selectedAccountId) ?? null
 

@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Microscope, Settings, ShieldCheck, User, Zap } from "lucide-react"
+import { Building2, ChevronDown, Home, Settings, ShieldCheck, User, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRole } from "@/lib/role-context"
-import { AccountPicker } from "@/components/account-intelligence/account-picker"
 import { SettingsDialog } from "@/components/settings/settings-dialog"
 import {
   DropdownMenu,
@@ -16,10 +15,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Research configurations used to be a second top-level screen reachable
-// from the sidebar; it's now reached only through the admin-only Settings
-// button below, alongside the new prompt-management features — so this
-// shell no longer needs multi-screen switching, just the one main view.
+// Research configurations are reached only through the admin-only Settings
+// button below, alongside the prompt-management features. The Home/Accounts
+// nav below is cosmetic, not a router — Home is a placeholder for a future
+// screen and never navigates; Accounts is always the active (only) view,
+// and which account/sub-view is showing is tracked in app/page.tsx.
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isAdmin, setIsAdmin } = useRole()
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -37,9 +37,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav aria-label="Main" className="flex flex-1 flex-col gap-1 p-3">
+          <span
+            aria-disabled="true"
+            title="Coming soon"
+            className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground/60"
+          >
+            <Home className="size-4 shrink-0" aria-hidden="true" />
+            Home
+            <span className="ml-auto rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+              Soon
+            </span>
+          </span>
           <span className="flex items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground">
-            <Microscope className="size-4 shrink-0" aria-hidden="true" />
-            Account intelligence
+            <Building2 className="size-4 shrink-0" aria-hidden="true" />
+            Accounts
           </span>
         </nav>
 
@@ -65,9 +76,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-muted-foreground" aria-hidden="true">
                 /
               </span>
-              <span className="font-medium">Account intelligence</span>
+              <span className="font-medium">Accounts</span>
             </nav>
-            <AccountPicker />
           </div>
 
           <DropdownMenu>

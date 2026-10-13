@@ -9,7 +9,6 @@ import { researchAreaLabel, useModelConfig } from "@/lib/use-admin-data"
 import { useGroupOutput, useGroupStatus, useGroupSummary } from "@/lib/use-research-data"
 import { CategoryCard, hasCategoryData } from "./output-renderer"
 import { SummaryPanel } from "./summary-panel"
-import { AccountHeader } from "./account-header"
 import { PanelChat } from "./panel-chat"
 
 const META_KEYS = new Set(["sources", "recommended_research_frequency"])
@@ -64,8 +63,6 @@ export function ResearchInsightsPage() {
   return (
     <>
       <div className="space-y-5">
-        <AccountHeader account={selectedAccount} />
-
         <div className="flex gap-2 overflow-x-auto rounded-xl border bg-card p-1.5">
           {researchAreas.map((g) => (
             <button

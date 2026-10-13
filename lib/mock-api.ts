@@ -21,6 +21,7 @@ import {
   type SavedPrompt,
   type ScheduleConfig,
   type ScheduleCoverage,
+  type SignalEntry,
   type SystemPrompt,
   type TriggerRunResult,
   type TriggerType,
@@ -120,6 +121,151 @@ function generateAccounts(count: number, startId: number): Account[] {
       location: regionLocation(region),
     }
   })
+}
+
+// --- Account signals --------------------------------------------------
+// A new, separately-sourced concept from the research pipeline above (not
+// derived from Research_output/Research_summary) - originally scoped as
+// notification-service digest content, repurposed here as the Accounts
+// tab's smart-column table. Fixed set of 3 signal types for now; more may
+// be added later via code, not an admin config.
+
+let nextSignalId = 1
+const signalSeeds: Array<Omit<SignalEntry, "id">> = [
+  {
+    account_id: "Acc_001", // HCA
+    signal_type: "c_suite_change",
+    headline: "Dr. Michael Schlosser named Chief Clinical Officer",
+    event_date: "2026-08-06",
+    narrative:
+      "The appointment of Dr. Schlosser and the creation of a new ambulatory operations group indicate strategic shifts in clinical leadership and ambulatory strategy, which could influence procurement priorities across care delivery models.",
+    sources: ["HCA Healthcare Investor Relations (News Release)"],
+  },
+  {
+    account_id: "Acc_001",
+    signal_type: "new_acquisition",
+    headline: "HCA acquires College of Health Care Professions",
+    event_date: "2026-05-27",
+    narrative:
+      "This acquisition expands HCA's ability to train and recruit allied health professionals, strengthening its workforce pipeline in Texas, which could directly impact future purchasing decisions tied to workforce development and training tools.",
+    sources: ["HCA Healthcare Investor Relations (Business Wire-hosted release)"],
+  },
+  {
+    account_id: "Acc_001",
+    signal_type: "new_construction_site",
+    headline: "HCA Florida Ocala Hospital $200M expansion announced",
+    event_date: "2026-04-10",
+    narrative:
+      "This major expansion adds inpatient capacity, ICU beds, and surgical services, signaling opportunities for sales in medical equipment, clinical infrastructure, and IT solutions supporting the new facilities.",
+    sources: ["HCA Florida Healthcare (Newsroom)"],
+  },
+  {
+    account_id: "Acc_001",
+    signal_type: "c_suite_change",
+    headline: "Erica Rossitto promoted to Chief Nurse Executive",
+    event_date: "2026-01-15",
+    narrative:
+      "Rossitto's appointment to lead HCA's nursing workforce highlights the potential for new investments in nursing workflows, staffing solutions, and clinical support tools across HCA's 100,000-strong nursing workforce.",
+    sources: ["HCA Healthcare Investor Relations (News Release)"],
+  },
+  {
+    account_id: "Acc_002", // Sanford Health
+    signal_type: "new_acquisition",
+    headline: "Sanford and North Memorial merger announced",
+    event_date: "2026-05-08",
+    narrative:
+      "Sanford's planned combination with North Memorial Health will create a subsidiary regional structure, signaling potential new demand for system-wide standardization, enterprise technology consolidation, and vendor partnerships within the Twin Cities metro.",
+    sources: ["Sanford Health News", "Healthcare Finance News"],
+  },
+  {
+    account_id: "Acc_002",
+    signal_type: "new_construction_site",
+    headline: "New clinic planned in Hawley, MN",
+    event_date: "2026-02-03",
+    narrative:
+      "The 9,000 sq. ft. outpatient clinic signals regional growth and new opportunities for ambulatory-focused technologies, equipment, or services as Sanford expands access within this market.",
+    sources: ["Lakes Area Radio"],
+  },
+  {
+    account_id: "Acc_002",
+    signal_type: "c_suite_change",
+    headline: "Sanford appoints Chief Transformation Officer",
+    event_date: "2026-01-07",
+    narrative:
+      "The creation of a Chief Transformation Officer role elevates focus on AI, digital strategy, and innovation, presenting key opportunities for vendors with transformative solutions tailored to healthcare enterprise needs.",
+    sources: ["Sanford Health News (News Release)"],
+  },
+  {
+    account_id: "Acc_002",
+    signal_type: "new_construction_site",
+    headline: "Sanford Black Hills Medical Center planned",
+    event_date: "2025-11-19",
+    narrative:
+      "The $500M Rapid City campus project signals significant upcoming procurement opportunities for construction, specialty equipment, and IT infrastructure as Sanford builds out this state-of-the-art specialty facility.",
+    sources: ["Sanford Health News", "Becker's Hospital Review"],
+  },
+  {
+    account_id: "Acc_002",
+    signal_type: "new_acquisition",
+    headline: "Sanford and Prairie Lakes combination announced",
+    event_date: "2025-11-14",
+    narrative:
+      "This combination expands Sanford's regional footprint and may drive vendor standardization across the newly integrated sites, opening doors for engagement on operational alignment or new facility investments.",
+    sources: ["Sanford Health News", "Prairie Lakes Healthcare System"],
+  },
+  {
+    account_id: "Acc_002",
+    signal_type: "new_acquisition",
+    headline: "Sanford merging with Lewis Drug",
+    event_date: "2025-08-28",
+    narrative:
+      "This acquisition adds retail pharmacy capabilities to Sanford's enterprise platform, potentially driving integration opportunities for vendors focused on ambulatory and distribution channels across multiple states.",
+    sources: ["Argus Leader"],
+  },
+  {
+    account_id: "Acc_003", // Baylor Scott & White Health
+    signal_type: "c_suite_change",
+    headline: "Robert Garriott named Board Chair",
+    event_date: "2026-07-01",
+    narrative:
+      "This governance-level transition could signal new strategic priorities or changes in oversight emphasis for the system, potentially influencing procurement decisions.",
+    sources: ["Baylor Scott & White Health (Newsroom Release)"],
+  },
+  {
+    account_id: "Acc_003",
+    signal_type: "c_suite_change",
+    headline: "Kevin Kumler named Levanto President",
+    event_date: "2025-11-04",
+    narrative:
+      "Levanto's leadership appointment highlights Baylor Scott & White's focus on scaling digital health commercialization, creating potential opportunities for vendors in hybrid care solutions.",
+    sources: ["Baylor Scott & White Health (Newsroom Release)"],
+  },
+  {
+    account_id: "Acc_004", // CommonSpirit Health
+    signal_type: "new_construction_site",
+    headline: "CommonSpirit breaks ground on new ambulatory campus in Phoenix",
+    event_date: "2026-03-12",
+    narrative:
+      "The new outpatient campus expands CommonSpirit's ambulatory footprint in a high-growth market, signaling opportunities for facility equipment and ambulatory-focused technology vendors.",
+    sources: ["CommonSpirit Health Newsroom"],
+  },
+  {
+    account_id: "Acc_005", // Ascension
+    signal_type: "c_suite_change",
+    headline: "Ascension names new Chief Digital Officer",
+    event_date: "2026-02-20",
+    narrative:
+      "The new digital leadership role signals increased investment in digital health and IT modernization initiatives across Ascension's network.",
+    sources: ["Ascension Press Release"],
+  },
+]
+const signals: SignalEntry[] = signalSeeds.map((seed) => ({ id: nextSignalId++, ...seed }))
+
+// GET /signals — every account's sales-relevant signal events, any
+// authenticated user. The Accounts tab groups these client-side by
+// account_id + signal_type; most accounts have none, which is expected.
+export function listSignals() {
+  return publicRequest<SignalEntry[]>(() => [...signals])
 }
 
 const modelConfigs: ResearchAreaModelConfig[] = [
