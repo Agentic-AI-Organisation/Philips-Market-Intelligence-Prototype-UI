@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { AppShell } from "@/components/app-shell"
+import { AppShell, type TopLevelScreen } from "@/components/app-shell"
 import { AccountsTable } from "@/components/accounts/accounts-table"
 import { AccountDetailPage } from "@/components/account-intelligence/account-detail-page"
+import { SettingsPage } from "@/components/settings/settings-page"
 import { RoleProvider } from "@/lib/role-context"
 import { AccountProvider, useAccountContext } from "@/lib/account-context"
 
@@ -26,13 +27,21 @@ function AccountsScreen() {
   )
 }
 
+function AppContent() {
+  const [screen, setScreen] = useState<TopLevelScreen>("accounts")
+
+  return (
+    <AppShell activeScreen={screen} onNavigate={setScreen}>
+      {screen === "settings" ? <SettingsPage /> : <AccountsScreen />}
+    </AppShell>
+  )
+}
+
 export default function Page() {
   return (
     <RoleProvider>
       <AccountProvider>
-        <AppShell>
-          <AccountsScreen />
-        </AppShell>
+        <AppContent />
       </AccountProvider>
     </RoleProvider>
   )

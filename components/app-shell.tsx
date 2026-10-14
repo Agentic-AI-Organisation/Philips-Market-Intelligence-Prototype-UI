@@ -1,10 +1,8 @@
 "use client"
 
-import { useState } from "react"
 import { Building2, ChevronDown, Home, Settings, ShieldCheck, User, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRole } from "@/lib/role-context"
-import { SettingsDialog } from "@/components/settings/settings-dialog"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -15,14 +13,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-// Research configurations are reached only through the admin-only Settings
-// button below, alongside the prompt-management features. The Home/Accounts
-// nav below is cosmetic, not a router — Home is a placeholder for a future
-// screen and never navigates; Accounts is always the active (only) view,
-// and which account/sub-view is showing is tracked in app/page.tsx.
-export function AppShell({ children }: { children: React.ReactNode }) {
+export type TopLevelScreen = "accounts" | "settings"
+
+interface AppShellProps {
+  children: React.ReactNode
+  activeScreen: TopLevelScreen
+  onNavigate: (screen: TopLevelScreen) => void
+}
+
+// Settings is a full top-level screen (see components/settings/settings-page.tsx),
+// not a popup — it used to be a Dialog, but Research Configurations already
+// opens its own Sheets/Dialogs (schedule create/edit, delete confirmation),
+// which stacked awkwardly on top of a Settings dialog. Home is still just a
+// placeholder for a future screen and never navigates.
+export function AppShell({ children, activeScreen, onNavigate }: AppShellProps) {
   const { isAdmin, setIsAdmin } = useRole()
-  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className="flex min-h-dvh bg-background">
@@ -48,18 +53,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Soon
             </span>
           </span>
-          <span className="flex items-center gap-3 rounded-lg bg-accent px-3 py-2.5 text-sm font-medium text-accent-foreground">
+          <button
+            type="button"
+            onClick={() => onNavigate("accounts")}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+              activeScreen === "accounts"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
             <Building2 className="size-4 shrink-0" aria-hidden="true" />
             Accounts
-          </span>
+          </button>
         </nav>
 
         {isAdmin && (
           <div className="border-t p-3">
             <button
               type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              onClick={() => onNavigate("settings")}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors",
+                activeScreen === "settings"
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              )}
             >
               <Settings className="size-4 shrink-0" aria-hidden="true" />
               Settings
@@ -76,7 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-muted-foreground" aria-hidden="true">
                 /
               </span>
-              <span className="font-medium">Accounts</span>
+              <span className="font-medium">{activeScreen === "settings" ? "Settings" : "Accounts"}</span>
             </nav>
           </div>
 
@@ -113,8 +132,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {"© 2026 Philips My App | All Rights Reserved."}
         </footer>
       </div>
-
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }
