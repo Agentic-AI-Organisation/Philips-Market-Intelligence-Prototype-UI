@@ -34,19 +34,26 @@ export function AccountDetailPage({ onBack }: { onBack: () => void }) {
 
       <AccountHeader account={selectedAccount} />
 
-      <div className="flex gap-2 overflow-x-auto rounded-xl border bg-card p-1.5">
+      {/* Underline tabs mark this as the page's top-level section switcher —
+          deliberately a different visual language from the filled-pill
+          segmented control ResearchInsightsPage uses for its own research-area
+          sub-navigation below, so the two levels don't read as peers. */}
+      <div className="flex gap-6 overflow-x-auto border-b">
         {OUTER_TABS.map((tab) => {
           const disabled = tab.id !== "intelligence"
+          const active = tab.id === "intelligence"
           return (
             <button
               key={tab.id}
               disabled={disabled}
               title={disabled ? "Coming soon" : undefined}
               className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
-                disabled
-                  ? "cursor-not-allowed text-muted-foreground/50"
-                  : "bg-primary text-primary-foreground",
+                "flex items-center gap-1.5 border-b-2 px-0.5 pb-3 text-sm font-medium whitespace-nowrap transition-colors",
+                active
+                  ? "border-primary text-foreground"
+                  : disabled
+                    ? "cursor-not-allowed border-transparent text-muted-foreground/50"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
               )}
             >
               {tab.label}
