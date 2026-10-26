@@ -12,21 +12,27 @@ import {
 } from "@/lib/schedule-time"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
+/**
+ * Dispatch status only confirms the run was handed off for research — not
+ * whether the research finished. Never label this "completed".
+ */
 export function DispatchBadge({ status }: { status: LastRunStatus }) {
   if (!status) return null
   const failed = status === "dispatch_failed"
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
-        failed ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success",
+        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        failed
+          ? "bg-destructive/10 text-destructive ring-destructive/20"
+          : "bg-success/10 text-success ring-success/20",
       )}
     >
       <span
         className={cn("size-1.5 rounded-full", failed ? "bg-destructive" : "bg-success")}
         aria-hidden="true"
       />
-      {failed ? "Dispatch failed" : "Dispatched"}
+      {failed ? "Send failed" : "Sent for research"}
     </span>
   )
 }

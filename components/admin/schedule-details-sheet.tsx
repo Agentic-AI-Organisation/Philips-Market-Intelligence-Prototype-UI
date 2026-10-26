@@ -6,7 +6,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
@@ -38,8 +37,18 @@ export function ScheduleDetailsSheet({
     <Sheet open={row !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent side="right" className="w-full gap-0 p-0 data-[side=right]:w-full data-[side=right]:sm:max-w-md">
         {row && (
-          <>
-            <SheetHeader className="border-b p-5">
+          <div className="flex h-full min-h-0 flex-col">
+            <SheetHeader className="shrink-0 border-b p-5 pr-12">
+              <SheetTitle className="text-base">
+                {accountsById.get(row.account_id)?.hospital_name ?? row.account_id}
+              </SheetTitle>
+              <SheetDescription>
+                {researchAreaLabel(researchAreasById.get(row.research_group_id)?.name, row.research_group_id)} ·{" "}
+                {row.account_id}
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-5">
               <div className="flex items-center gap-2">
                 <span
                   className={
@@ -52,16 +61,7 @@ export function ScheduleDetailsSheet({
                 </span>
                 <span className="text-xs text-muted-foreground">Schedule #{row.id}</span>
               </div>
-              <SheetTitle className="text-base">
-                {accountsById.get(row.account_id)?.hospital_name ?? row.account_id}
-              </SheetTitle>
-              <SheetDescription>
-                {researchAreaLabel(researchAreasById.get(row.research_group_id)?.name, row.research_group_id)} ·{" "}
-                {row.account_id}
-              </SheetDescription>
-            </SheetHeader>
 
-            <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-5">
               <DetailGroup title="Schedule">
                 <DetailRow label="Cadence">
                   <Cadence row={row} />
@@ -79,7 +79,7 @@ export function ScheduleDetailsSheet({
                 <DetailRow label="Triggered">
                   <ZonedTime iso={row.last_triggered_at} timeZone={row.timezone} empty="Never run" />
                 </DetailRow>
-                <DetailRow label="Dispatch">
+                <DetailRow label="Status">
                   {row.last_run_status ? (
                     <DispatchBadge status={row.last_run_status} />
                   ) : (
@@ -87,8 +87,7 @@ export function ScheduleDetailsSheet({
                   )}
                 </DetailRow>
                 <p className="text-xs leading-relaxed text-muted-foreground">
-                  Dispatch status only confirms the run was handed off to research, not whether the research
-                  finished.
+                  {"“Sent for research” only confirms the run was handed off — it doesn’t mean the research has finished."}
                 </p>
               </DetailGroup>
 
@@ -100,23 +99,23 @@ export function ScheduleDetailsSheet({
                   <AuditValue iso={row.updated_at} by={row.updated_by} timeZone={row.timezone} />
                 </DetailRow>
               </DetailGroup>
-            </div>
 
-            <SheetFooter className="flex-row justify-end gap-2 border-t p-4">
-              <Button variant="outline" disabled={pending} onClick={() => onToggle(row, !row.is_enabled)}>
-                {row.is_enabled ? (
-                  <Pause data-icon="inline-start" aria-hidden="true" />
-                ) : (
-                  <Play data-icon="inline-start" aria-hidden="true" />
-                )}
-                {row.is_enabled ? "Pause" : "Resume"}
-              </Button>
-              <Button onClick={() => onEdit(row)}>
-                <Pencil data-icon="inline-start" aria-hidden="true" />
-                Edit
-              </Button>
-            </SheetFooter>
-          </>
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button variant="outline" disabled={pending} onClick={() => onToggle(row, !row.is_enabled)}>
+                  {row.is_enabled ? (
+                    <Pause data-icon="inline-start" aria-hidden="true" />
+                  ) : (
+                    <Play data-icon="inline-start" aria-hidden="true" />
+                  )}
+                  {pending ? "Saving…" : row.is_enabled ? "Pause" : "Resume"}
+                </Button>
+                <Button onClick={() => onEdit(row)}>
+                  <Pencil data-icon="inline-start" aria-hidden="true" />
+                  Edit
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </SheetContent>
     </Sheet>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { MapPin } from "lucide-react"
 import type { Account } from "@/lib/types"
 
@@ -11,23 +12,34 @@ function locationLabel(location: Account["location"] | undefined): string | null
   return parts.length > 0 ? parts.join(", ") : null
 }
 
-export function AccountHeader({ account }: { account: Account }) {
+export function AccountHeader({
+  account,
+  tabs,
+}: {
+  account: Account
+  /** Rendered as the header card's bottom strip (section tabs), so they read
+   * as one surface with the identity row. */
+  tabs?: ReactNode
+}) {
   const location = locationLabel(account.location)
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border bg-card p-4">
-      <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-semibold text-primary-foreground">
-        {initial(account.hospital_name)}
+    <div className="rounded-xl border bg-card">
+      <div className="flex items-center gap-3 p-4">
+        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-lg font-semibold text-primary-foreground">
+          {initial(account.hospital_name)}
+        </div>
+        <div>
+          <h1 className="text-lg font-semibold">{account.hospital_name}</h1>
+          {location && (
+            <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
+              <MapPin className="size-3.5" aria-hidden="true" />
+              {location}
+            </p>
+          )}
+        </div>
       </div>
-      <div>
-        <h1 className="text-lg font-semibold">{account.hospital_name}</h1>
-        {location && (
-          <p className="mt-0.5 flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPin className="size-3.5" aria-hidden="true" />
-            {location}
-          </p>
-        )}
-      </div>
+      {tabs && <div className="px-4">{tabs}</div>}
     </div>
   )
 }

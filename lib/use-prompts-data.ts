@@ -14,8 +14,8 @@ export function useQuickPrompts() {
 }
 
 export function useSavedPrompts(userId: string | null) {
-  const { data, isLoading } = useSWR(userId ? ["saved-prompts", userId] : null, ([, id]) => api.listSavedPrompts(id))
-  return { savedPrompts: data ?? [], isLoading }
+  const { data, error, isLoading } = useSWR(userId ? ["saved-prompts", userId] : null, ([, id]) => api.listSavedPrompts(id))
+  return { savedPrompts: data ?? [], error, isLoading }
 }
 
 // Revalidates every prompts-related SWR key — system prompts, quick

@@ -21,7 +21,6 @@ import {
   type SavedPrompt,
   type ScheduleConfig,
   type ScheduleCoverage,
-  type SignalEntry,
   type SystemPrompt,
   type TriggerRunResult,
   type TriggerType,
@@ -52,6 +51,25 @@ let hasAdminRole = true
 
 export function setMockAdminRole(value: boolean) {
   hasAdminRole = value
+}
+
+// Second, independent role — system-prompt administration ("chat admin").
+// The real app reads the same role string for both today, but they're gated
+// separately in the UI, so the prototype keeps two switches.
+let hasChatAdminRole = true
+
+export function setMockChatAdminRole(value: boolean) {
+  hasChatAdminRole = value
+}
+
+export function getMockChatAdminRole() {
+  return hasChatAdminRole
+}
+
+async function chatAdminRequest<T>(fn: () => T): Promise<T> {
+  await delay()
+  if (!hasChatAdminRole) throw new ApiError(401, "Missing required role: research.admin")
+  return structuredClone(fn())
 }
 
 const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -123,149 +141,10 @@ function generateAccounts(count: number, startId: number): Account[] {
   })
 }
 
-// --- Account signals --------------------------------------------------
-// A new, separately-sourced concept from the research pipeline above (not
-// derived from Research_output/Research_summary) - originally scoped as
-// notification-service digest content, repurposed here as the Accounts
-// tab's smart-column table. Fixed set of 3 signal types for now; more may
-// be added later via code, not an admin config.
-
-let nextSignalId = 1
-const signalSeeds: Array<Omit<SignalEntry, "id">> = [
-  {
-    account_id: "Acc_001", // HCA
-    signal_type: "c_suite_change",
-    headline: "Dr. Michael Schlosser named Chief Clinical Officer",
-    event_date: "2026-08-06",
-    narrative:
-      "The appointment of Dr. Schlosser and the creation of a new ambulatory operations group indicate strategic shifts in clinical leadership and ambulatory strategy, which could influence procurement priorities across care delivery models.",
-    sources: ["HCA Healthcare Investor Relations (News Release)"],
-  },
-  {
-    account_id: "Acc_001",
-    signal_type: "new_acquisition",
-    headline: "HCA acquires College of Health Care Professions",
-    event_date: "2026-05-27",
-    narrative:
-      "This acquisition expands HCA's ability to train and recruit allied health professionals, strengthening its workforce pipeline in Texas, which could directly impact future purchasing decisions tied to workforce development and training tools.",
-    sources: ["HCA Healthcare Investor Relations (Business Wire-hosted release)"],
-  },
-  {
-    account_id: "Acc_001",
-    signal_type: "new_construction_site",
-    headline: "HCA Florida Ocala Hospital $200M expansion announced",
-    event_date: "2026-04-10",
-    narrative:
-      "This major expansion adds inpatient capacity, ICU beds, and surgical services, signaling opportunities for sales in medical equipment, clinical infrastructure, and IT solutions supporting the new facilities.",
-    sources: ["HCA Florida Healthcare (Newsroom)"],
-  },
-  {
-    account_id: "Acc_001",
-    signal_type: "c_suite_change",
-    headline: "Erica Rossitto promoted to Chief Nurse Executive",
-    event_date: "2026-01-15",
-    narrative:
-      "Rossitto's appointment to lead HCA's nursing workforce highlights the potential for new investments in nursing workflows, staffing solutions, and clinical support tools across HCA's 100,000-strong nursing workforce.",
-    sources: ["HCA Healthcare Investor Relations (News Release)"],
-  },
-  {
-    account_id: "Acc_002", // Sanford Health
-    signal_type: "new_acquisition",
-    headline: "Sanford and North Memorial merger announced",
-    event_date: "2026-05-08",
-    narrative:
-      "Sanford's planned combination with North Memorial Health will create a subsidiary regional structure, signaling potential new demand for system-wide standardization, enterprise technology consolidation, and vendor partnerships within the Twin Cities metro.",
-    sources: ["Sanford Health News", "Healthcare Finance News"],
-  },
-  {
-    account_id: "Acc_002",
-    signal_type: "new_construction_site",
-    headline: "New clinic planned in Hawley, MN",
-    event_date: "2026-02-03",
-    narrative:
-      "The 9,000 sq. ft. outpatient clinic signals regional growth and new opportunities for ambulatory-focused technologies, equipment, or services as Sanford expands access within this market.",
-    sources: ["Lakes Area Radio"],
-  },
-  {
-    account_id: "Acc_002",
-    signal_type: "c_suite_change",
-    headline: "Sanford appoints Chief Transformation Officer",
-    event_date: "2026-01-07",
-    narrative:
-      "The creation of a Chief Transformation Officer role elevates focus on AI, digital strategy, and innovation, presenting key opportunities for vendors with transformative solutions tailored to healthcare enterprise needs.",
-    sources: ["Sanford Health News (News Release)"],
-  },
-  {
-    account_id: "Acc_002",
-    signal_type: "new_construction_site",
-    headline: "Sanford Black Hills Medical Center planned",
-    event_date: "2025-11-19",
-    narrative:
-      "The $500M Rapid City campus project signals significant upcoming procurement opportunities for construction, specialty equipment, and IT infrastructure as Sanford builds out this state-of-the-art specialty facility.",
-    sources: ["Sanford Health News", "Becker's Hospital Review"],
-  },
-  {
-    account_id: "Acc_002",
-    signal_type: "new_acquisition",
-    headline: "Sanford and Prairie Lakes combination announced",
-    event_date: "2025-11-14",
-    narrative:
-      "This combination expands Sanford's regional footprint and may drive vendor standardization across the newly integrated sites, opening doors for engagement on operational alignment or new facility investments.",
-    sources: ["Sanford Health News", "Prairie Lakes Healthcare System"],
-  },
-  {
-    account_id: "Acc_002",
-    signal_type: "new_acquisition",
-    headline: "Sanford merging with Lewis Drug",
-    event_date: "2025-08-28",
-    narrative:
-      "This acquisition adds retail pharmacy capabilities to Sanford's enterprise platform, potentially driving integration opportunities for vendors focused on ambulatory and distribution channels across multiple states.",
-    sources: ["Argus Leader"],
-  },
-  {
-    account_id: "Acc_003", // Baylor Scott & White Health
-    signal_type: "c_suite_change",
-    headline: "Robert Garriott named Board Chair",
-    event_date: "2026-07-01",
-    narrative:
-      "This governance-level transition could signal new strategic priorities or changes in oversight emphasis for the system, potentially influencing procurement decisions.",
-    sources: ["Baylor Scott & White Health (Newsroom Release)"],
-  },
-  {
-    account_id: "Acc_003",
-    signal_type: "c_suite_change",
-    headline: "Kevin Kumler named Levanto President",
-    event_date: "2025-11-04",
-    narrative:
-      "Levanto's leadership appointment highlights Baylor Scott & White's focus on scaling digital health commercialization, creating potential opportunities for vendors in hybrid care solutions.",
-    sources: ["Baylor Scott & White Health (Newsroom Release)"],
-  },
-  {
-    account_id: "Acc_004", // CommonSpirit Health
-    signal_type: "new_construction_site",
-    headline: "CommonSpirit breaks ground on new ambulatory campus in Phoenix",
-    event_date: "2026-03-12",
-    narrative:
-      "The new outpatient campus expands CommonSpirit's ambulatory footprint in a high-growth market, signaling opportunities for facility equipment and ambulatory-focused technology vendors.",
-    sources: ["CommonSpirit Health Newsroom"],
-  },
-  {
-    account_id: "Acc_005", // Ascension
-    signal_type: "c_suite_change",
-    headline: "Ascension names new Chief Digital Officer",
-    event_date: "2026-02-20",
-    narrative:
-      "The new digital leadership role signals increased investment in digital health and IT modernization initiatives across Ascension's network.",
-    sources: ["Ascension Press Release"],
-  },
-]
-const signals: SignalEntry[] = signalSeeds.map((seed) => ({ id: nextSignalId++, ...seed }))
-
-// GET /signals — every account's sales-relevant signal events, any
-// authenticated user. The Accounts tab groups these client-side by
-// account_id + signal_type; most accounts have none, which is expected.
-export function listSignals() {
-  return publicRequest<SignalEntry[]>(() => [...signals])
+// Account signals (new signal_title schema) live in lib/mock-signals.ts, which
+// reads the account list through this accessor.
+export function getMockAccounts(): readonly Account[] {
+  return accounts
 }
 
 const modelConfigs: ResearchAreaModelConfig[] = [
@@ -771,12 +650,21 @@ export function getGroupStatus(accountId: string, groupId: string) {
   })
 }
 
-// Simulates triggering a research run: flips status to "running" immediately,
-// then "completes" it ~4s later and bumps generated_at — long enough to see
-// the "Running…" state and the 8s poll (in the hook) pick up the transition.
+// Simulates triggering a research run like POST /accounts/{id}/research/{area}
+// (202 + background run): a second trigger while one is in flight returns
+// already_running instead of starting another. The run flips status to
+// "running" immediately and "completes" ~6s later, bumping generated_at, so
+// the "Running…" state and the status poll are observable.
+const activeRuns = new Map<string, string>()
+const RUN_DURATION_MS = 6000
+
 export function runGroup(groupId: string, accountId: string) {
   return publicRequest<TriggerRunResult>(() => {
     const key = outputKey(accountId, groupId)
+    const inFlight = activeRuns.get(key)
+    if (inFlight) return { run_id: inFlight, status: "running", already_running: true }
+    const runId = crypto.randomUUID()
+    activeRuns.set(key, runId)
     const prior = runStatuses.get(key)
     runStatuses.set(key, { last_run_timestamp: prior?.last_run_timestamp ?? null, last_run_status: "running" })
     setTimeout(() => {
@@ -784,8 +672,11 @@ export function runGroup(groupId: string, accountId: string) {
       runStatuses.set(key, { last_run_timestamp: generatedAt, last_run_status: "completed" })
       const existingOutput = researchOutputs[key]
       if (existingOutput) researchOutputs[key] = { ...existingOutput, generated_at: generatedAt }
-    }, 4000)
-    return { run_id: crypto.randomUUID(), status: "queued", already_running: false }
+      const existingSummary = researchSummaries[key]
+      if (existingSummary) researchSummaries[key] = { ...existingSummary, generated_at: generatedAt }
+      activeRuns.delete(key)
+    }, RUN_DURATION_MS)
+    return { run_id: runId, status: "queued", already_running: false }
   })
 }
 
@@ -861,7 +752,7 @@ export function listQuickPrompts() {
 }
 
 export function createSystemPrompt(payload: { name: string; prompt_text: string }) {
-  return adminRequest<SystemPrompt>(() => {
+  return chatAdminRequest<SystemPrompt>(() => {
     const now = new Date().toISOString()
     const row: SystemPrompt = {
       id: nextSystemPromptId++,
@@ -879,7 +770,7 @@ export function createSystemPrompt(payload: { name: string; prompt_text: string 
 }
 
 export function updateSystemPrompt(id: number, payload: { name?: string; prompt_text?: string }) {
-  return adminRequest<SystemPrompt>(() => {
+  return chatAdminRequest<SystemPrompt>(() => {
     const row = findSystemPrompt(id)
     Object.assign(row, payload, { updated_at: new Date().toISOString(), updated_by: CURRENT_USER })
     return row
@@ -887,7 +778,7 @@ export function updateSystemPrompt(id: number, payload: { name?: string; prompt_
 }
 
 export function deleteSystemPrompt(id: number) {
-  return adminRequest<void>(() => {
+  return chatAdminRequest<void>(() => {
     const index = systemPrompts.findIndex((p) => p.id === id)
     if (index === -1) throw new ApiError(404, `System prompt ${id} not found`)
     systemPrompts.splice(index, 1)
@@ -899,7 +790,7 @@ export function deleteSystemPrompt(id: number) {
 // than folding the flag into the general edit form. Enabling a 4th quick
 // prompt is a 409, same shape as ScheduleConflictError elsewhere.
 export function setQuickPrompt(id: number, enabled: boolean) {
-  return adminRequest<SystemPrompt>(() => {
+  return chatAdminRequest<SystemPrompt>(() => {
     const row = findSystemPrompt(id)
     if (enabled && !row.is_quick_prompt) {
       const activeCount = systemPrompts.filter((p) => p.is_quick_prompt).length

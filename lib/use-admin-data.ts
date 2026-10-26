@@ -3,7 +3,7 @@
 import useSWR, { useSWRConfig } from "swr"
 import { useCallback, useMemo } from "react"
 import * as api from "./mock-api"
-import type { ListRunHistoryParams, ListSchedulesParams } from "./types"
+import type { Account, ListRunHistoryParams, ListSchedulesParams } from "./types"
 
 export function useAccounts() {
   const { data, isLoading } = useSWR("accounts", api.listAccounts, {
@@ -39,6 +39,26 @@ export function useScheduleCoverage() {
     return map
   }, [data])
   return { coverage: byArea, isLoading: isLoading && !data }
+}
+
+// GET /research-areas/{id}/unscheduled-accounts — live list of accounts with
+// no enabled schedule for the area. Composed from the accounts + coverage
+// mocks (async, admin-gated) rather than a stored list, so it always reflects
+// schedules created or resumed since the form opened.
+async function fetchUnscheduledAccounts(areaId: string): Promise<Account[]> {
+  const [accounts, coverage] = await Promise.all([api.listAccounts(), api.getScheduleCoverage()])
+  const scheduled = new Set(coverage[areaId] ?? [])
+  return accounts
+    .filter((a) => !scheduled.has(a.account_id))
+    .sort((a, b) => a.hospital_name.localeCompare(b.hospital_name))
+}
+
+export function useUnscheduledAccounts(areaId: string | null) {
+  return useSWR(
+    areaId ? ["schedules", "unscheduled", areaId] : null,
+    ([, , id]) => fetchUnscheduledAccounts(id as string),
+    { revalidateOnFocus: false, dedupingInterval: 0 },
+  )
 }
 
 export function useRunHistory(params: ListRunHistoryParams) {

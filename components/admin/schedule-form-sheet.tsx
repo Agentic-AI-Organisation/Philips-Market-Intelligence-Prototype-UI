@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { CalendarClock, Info, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -35,11 +35,13 @@ import {
   sortDays,
   zoneAbbreviation,
 } from "@/lib/schedule-time"
+import { adminErrorMessage } from "@/lib/admin-roles"
 import {
   researchAreaLabel,
   useAccounts,
   useModelConfig,
   useScheduleCoverage,
+  useUnscheduledAccounts,
 } from "@/lib/use-admin-data"
 import { SearchableSelect } from "./searchable-select"
 import { AccountMultiPicker } from "./account-multi-picker"
@@ -182,15 +184,25 @@ function ScheduleForm({
   const { coverage, isLoading: coverageLoading } = useScheduleCoverage()
 
   const scheduledInArea = draft.research_group_id ? coverage.get(draft.research_group_id) : undefined
-  const availableAccounts = useMemo(
-    () =>
-      draft.research_group_id
-        ? accounts
-            .filter((a) => !scheduledInArea?.has(a.account_id))
-            .sort((a, b) => a.hospital_name.localeCompare(b.hospital_name))
-        : [],
-    [accounts, scheduledInArea, draft.research_group_id],
-  )
+
+  // The account picker is a live query: fetch accounts with no enabled
+  // schedule for the picked research area, right after the area is picked.
+  const {
+    data: unscheduledData,
+    error: unscheduledError,
+    isLoading: unscheduledLoading,
+  } = useUnscheduledAccounts(isEdit || !draft.research_group_id ? null : draft.research_group_id)
+  const unscheduled = useMemo(() => unscheduledData ?? [], [unscheduledData])
+  const unscheduledById = useMemo(() => new Map(unscheduled.map((a) => [a.account_id, a])), [unscheduled])
+
+  // Drop anything selected that is no longer schedulable.
+  useEffect(() => {
+    if (!unscheduledData) return
+    setSelectedAccounts((prev) => {
+      const kept = [...prev].filter((id) => unscheduledById.has(id))
+      return kept.length === prev.size ? prev : new Set(kept)
+    })
+  }, [unscheduledData, unscheduledById])
 
   const errors = validate(draft, selectedAccounts.size, isEdit)
   const visibleErrors = showErrors ? errors : {}
@@ -280,7 +292,7 @@ function ScheduleForm({
       }
       await onSaved()
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : "Something went wrong.")
+      setServerError(adminErrorMessage(err, "Something went wrong."))
     } finally {
       setSubmitting(false)
       setConfirmOpen(false)
@@ -288,8 +300,8 @@ function ScheduleForm({
   }
 
   const confirmAccounts = useMemo(
-    () => [...selectedAccounts].map((id) => ({ id, name: accountsById.get(id)?.hospital_name ?? id })),
-    [selectedAccounts, accountsById],
+    () => [...selectedAccounts].map((id) => ({ id, name: unscheduledById.get(id)?.hospital_name ?? id })),
+    [selectedAccounts, unscheduledById],
   )
   const shownAccounts = confirmAccounts.slice(0, 50)
   const hiddenAccountCount = confirmAccounts.length - shownAccounts.length
@@ -376,14 +388,22 @@ function ScheduleForm({
                 hint={draft.research_group_id ? "Only accounts without an active schedule for this research area are listed." : undefined}
               >
                 {draft.research_group_id ? (
-                  coverageLoading ? (
+                  unscheduledLoading && unscheduled.length === 0 ? (
                     <div className="flex h-40 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">
                       Loading accounts…
                     </div>
+                  ) : unscheduledError ? (
+                    <p
+                      role="alert"
+                      className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
+                    >
+                      {"Couldn't load accounts. "}
+                      {adminErrorMessage(unscheduledError, "Could not load accounts.")}
+                    </p>
                   ) : (
                     <AccountMultiPicker
                       id="account-search"
-                      accounts={availableAccounts}
+                      accounts={unscheduled}
                       selected={selectedAccounts}
                       onChange={(next) => {
                         setSelectedAccounts(next)

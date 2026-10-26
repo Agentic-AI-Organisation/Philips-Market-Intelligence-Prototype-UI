@@ -7,6 +7,7 @@ import { AccountDetailPage } from "@/components/account-intelligence/account-det
 import { SettingsPage } from "@/components/settings/settings-page"
 import { RoleProvider } from "@/lib/role-context"
 import { AccountProvider, useAccountContext } from "@/lib/account-context"
+import { ChatStoreProvider } from "@/lib/chat-store-context"
 
 // The Accounts tab's own two sub-views (table vs. a specific account) —
 // not a router, just local state, since Home (see app-shell.tsx) never
@@ -41,7 +42,9 @@ export default function Page() {
   return (
     <RoleProvider>
       <AccountProvider>
-        <AppContent />
+        <ChatStoreProvider>
+          <AppContent />
+        </ChatStoreProvider>
       </AccountProvider>
     </RoleProvider>
   )

@@ -83,16 +83,21 @@ export interface Account {
 // not derived from Research_output/Research_summary. Surfaced as the
 // Accounts tab's smart-column table; see lib/use-signals-data.ts.
 
-export type SignalType = "c_suite_change" | "new_acquisition" | "new_construction_site"
-
-export interface SignalEntry {
+export interface AccountSignal {
   id: number
   account_id: string
-  signal_type: SignalType
-  headline: string
-  event_date: string
-  narrative: string
-  sources: string[]
+  signal_title: string
+  signal_prompt: string
+  signal_output: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AccountsPage {
+  items: Account[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export const MODELS = ["gpt-5.2", "gpt-5.4", "gpt-5.5", "gpt-5.6-luna"] as const

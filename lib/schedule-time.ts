@@ -88,7 +88,7 @@ function zonedTimeToUtc(
   return new Date(result)
 }
 
-type NextRunInput = Pick<
+export type NextRunInput = Pick<
   ScheduleConfig,
   | "frequency_type"
   | "days_of_week"
@@ -293,4 +293,16 @@ export const DEFAULT_TIMEZONE = "Asia/Kolkata"
 export function defaultTimezone(preferred?: string | null): string {
   if (preferred && SCHEDULING_TIMEZONES.includes(preferred)) return preferred
   return DEFAULT_TIMEZONE
+}
+
+/**
+ * Whether the account screen may show a next-run line for this row: only an
+ * enabled schedule with a computed next run. Dispatch failures, paused rows,
+ * and absence all resolve to "show nothing" — never alarm copy, and schedule
+ * state never gates existing research content.
+ */
+export function shouldShowNextRun(
+  row: ScheduleConfig | null | undefined,
+): row is ScheduleConfig & { next_run_at: string } {
+  return !!row && row.is_enabled && !!row.next_run_at
 }

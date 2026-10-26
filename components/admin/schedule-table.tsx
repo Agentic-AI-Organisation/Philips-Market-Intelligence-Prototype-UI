@@ -19,6 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { Account, ResearchAreaModelConfig, ScheduleConfig, StatusFilter } from "@/lib/types"
+import { adminErrorMessage } from "@/lib/admin-roles"
 import { researchAreaLabel } from "@/lib/use-admin-data"
 import { Cadence, DispatchBadge, ZonedTime } from "./schedule-bits"
 
@@ -53,7 +54,7 @@ export function ScheduleTable({
     return (
       <p role="alert" className="px-6 py-12 text-center text-sm text-destructive">
         {"Couldn't load schedules. "}
-        {error instanceof Error ? error.message : ""}
+        {error ? adminErrorMessage(error, "Failed to load schedules") : ""}
       </p>
     )
   }
@@ -68,9 +69,6 @@ export function ScheduleTable({
           <p className="text-sm font-medium">
             {statusFilter === "paused" ? "No paused schedules" : "No schedules match these filters"}
           </p>
-          <p className="text-xs text-muted-foreground">
-            Try a different filter, or create a schedule to start automated research.
-          </p>
         </div>
         {emptyAction}
       </div>
@@ -78,10 +76,10 @@ export function ScheduleTable({
   }
 
   return (
-    <Table>
+    <Table className="min-w-[880px]">
       <TableHeader>
         <TableRow className="bg-muted/50 hover:bg-muted/50">
-          <TableHead className="pl-4">Account</TableHead>
+          <TableHead className="w-44 pl-4">Account</TableHead>
           <TableHead>Research area</TableHead>
           <TableHead>Cadence</TableHead>
           <TableHead>Next run</TableHead>
@@ -110,13 +108,13 @@ export function ScheduleTable({
               const accountName = account?.hospital_name ?? row.account_id
               return (
                 <TableRow key={row.id} data-state={row.is_enabled ? undefined : "paused"}>
-                  <TableCell className="py-3 pl-4">
+                  <TableCell className="w-44 max-w-44 py-3 pl-4">
                     <button
                       onClick={() => onDetails(row)}
-                      className="flex flex-col gap-0.5 text-left hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+                      className="flex w-full flex-col gap-0.5 text-left break-words hover:underline focus-visible:outline-2 focus-visible:outline-ring"
                     >
-                      <span className="max-w-56 truncate font-medium">{accountName}</span>
-                      <span className="text-xs text-muted-foreground">{row.account_id}</span>
+                      <span className="w-full truncate font-medium">{accountName}</span>
+                      <span className="text-xs break-all text-muted-foreground">{row.account_id}</span>
                     </button>
                   </TableCell>
                   <TableCell>

@@ -3,10 +3,9 @@
 import { useState } from "react"
 import { PlayCircle } from "lucide-react"
 import { toast } from "sonner"
-import * as api from "@/lib/mock-api"
 import { useAccountContext } from "@/lib/account-context"
 import { researchAreaLabel, useModelConfig } from "@/lib/use-admin-data"
-import { useGroupOutput, useGroupStatus, useGroupSummary } from "@/lib/use-research-data"
+import { useGroupOutput, useGroupSummary, useResearchRun } from "@/lib/use-research-data"
 import { CategoryCard, hasCategoryData } from "./output-renderer"
 import { SummaryPanel } from "./summary-panel"
 import { PanelChat } from "./panel-chat"
@@ -17,36 +16,34 @@ export function ResearchInsightsPage() {
   const { selectedAccountId, selectedAccount, isLoading: accountsLoading } = useAccountContext()
   const { researchAreas, isLoading: areasLoading } = useModelConfig()
   const [activeGroupId, setActiveGroupId] = useState<string | undefined>(undefined)
-  const [triggering, setTriggering] = useState(false)
 
   const groupId = activeGroupId ?? researchAreas[0]?.research_group_id
   const activeGroup = researchAreas.find((g) => g.research_group_id === groupId)
 
-  const { data: entry, isLoading: outputLoading, mutate: refreshOutput } = useGroupOutput(selectedAccountId, groupId)
+  const {
+    data: entry,
+    error: outputError,
+    isLoading: outputLoading,
+    mutate: refreshOutput,
+  } = useGroupOutput(selectedAccountId, groupId)
   const { data: summaryEntry, mutate: refreshSummary } = useGroupSummary(selectedAccountId, groupId)
-  const { data: serverStatus } = useGroupStatus(selectedAccountId, groupId)
-
-  const isRunning = triggering || serverStatus?.last_run_status === "running"
+  const {
+    status: serverStatus,
+    isRunning,
+    alreadyRunning,
+    error: runError,
+    runNow: triggerRun,
+  } = useResearchRun(selectedAccountId, groupId, () => {
+    refreshOutput()
+    refreshSummary()
+    toast.success("Research complete", { description: "Findings have been refreshed." })
+  })
 
   async function runNow() {
-    if (!selectedAccountId || !groupId) return
-    setTriggering(true)
-    try {
-      await api.runGroup(groupId, selectedAccountId)
-      toast.success("Research started", { description: "This usually takes a few seconds in this prototype." })
-      // The 4s mock completion timer (see runGroup) will flip serverStatus
-      // via the 8s poll; refresh output/summary a bit after that so the new
-      // generated_at timestamp shows up without the user needing to switch tabs.
-      setTimeout(() => {
-        refreshOutput()
-        refreshSummary()
-      }, 4500)
-    } catch (err) {
-      toast.error("Failed to trigger research run", { description: err instanceof Error ? err.message : undefined })
-    } finally {
-      setTriggering(false)
-    }
+    await triggerRun()
   }
+
+  const error = runError ?? (outputError ? (outputError instanceof Error ? outputError.message : "Failed to load research output") : null)
 
   if (accountsLoading || !selectedAccountId || !selectedAccount) {
     return <p className="text-sm text-muted-foreground">Loading accounts…</p>
@@ -62,11 +59,17 @@ export function ResearchInsightsPage() {
 
   return (
     <>
-      <div className="space-y-5">
-        <div className="flex gap-2 overflow-x-auto rounded-xl border bg-card p-1.5">
+      <div className="space-y-5 rounded-2xl border border-primary/10 bg-primary/[0.03] p-4 sm:p-5">
+        <div
+          role="tablist"
+          aria-label="Research areas within Intelligence"
+          className="flex gap-2 overflow-x-auto rounded-xl border bg-card p-1.5"
+        >
           {researchAreas.map((g) => (
             <button
               key={g.research_group_id}
+              role="tab"
+              aria-selected={groupId === g.research_group_id}
               onClick={() => setActiveGroupId(g.research_group_id)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors ${
                 groupId === g.research_group_id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
@@ -82,7 +85,11 @@ export function ResearchInsightsPage() {
             <h2 className="text-base font-semibold">{activeGroup ? researchAreaLabel(activeGroup.name, activeGroup.research_group_id) : ""}</h2>
             <div className="mt-2 flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {entry?.generated_at
+                {isRunning
+                  ? alreadyRunning
+                    ? "A research run is already in progress for this account…"
+                    : "Research run in progress…"
+                  : entry?.generated_at
                   ? `Last refreshed on ${new Date(entry.generated_at).toLocaleString()}`
                   : serverStatus?.last_run_timestamp
                     ? `Last refreshed on ${new Date(serverStatus.last_run_timestamp).toLocaleString()}`
@@ -100,13 +107,19 @@ export function ResearchInsightsPage() {
           </button>
         </div>
 
-        <SummaryPanel entry={summaryEntry} />
+        {error && (
+          <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
 
-        {outputLoading && entry === undefined ? (
+        {summaryEntry !== undefined && <SummaryPanel entry={summaryEntry} />}
+
+        {outputLoading || (entry === undefined && !outputError) ? (
           <p className="text-sm text-muted-foreground">Loading research output…</p>
-        ) : cards.length === 0 ? (
+        ) : cards.length === 0 && !outputError ? (
           <p className="text-sm text-muted-foreground">No research findings yet for this account and requirement group.</p>
-        ) : (
+        ) : cards.length === 0 ? null : (
           <div className="grid grid-cols-1 gap-4">
             {cards.map(([key, value]) => (
               <CategoryCard key={key} id={`topic-${key}`} title={researchAreaLabel(key, key)} value={value} />

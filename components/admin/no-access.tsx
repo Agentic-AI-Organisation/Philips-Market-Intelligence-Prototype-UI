@@ -1,18 +1,18 @@
-import { ShieldAlert } from "lucide-react"
+import { Lock } from "lucide-react"
+import { SCHEDULING_ADMIN_ROLE } from "@/lib/admin-roles"
 
-export function NoAccess() {
+// The source's AccessDeniedPanel — shown when the signed-in user lacks the
+// role that gates a Settings section (or both of them).
+export function NoAccess({ role = SCHEDULING_ADMIN_ROLE }: { role?: string }) {
   return (
-    <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-xl border bg-card px-6 py-14 text-center">
-      <span className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-        <ShieldAlert className="size-6" aria-hidden="true" />
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card px-6 py-14 text-center">
+      <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Lock className="size-5" aria-hidden="true" />
       </span>
-      <div className="flex flex-col gap-1.5">
-        <h1 className="text-lg font-semibold">{"You don't have admin access"}</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Research scheduling requires the <code className="rounded bg-muted px-1 py-0.5 text-xs">research.admin</code>{" "}
-          role. Ask your Account360 administrator to grant it, then sign in again.
-        </p>
-      </div>
+      <h2 className="text-base font-semibold">Restricted to administrators</h2>
+      <p className="max-w-sm text-sm text-muted-foreground">
+        This section requires the {role} role. Ask your administrator for access.
+      </p>
     </div>
   )
 }

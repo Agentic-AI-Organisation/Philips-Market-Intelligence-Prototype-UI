@@ -169,3 +169,26 @@ export function getMockChatResponse(accountId: string, query: string): ChatRespo
   }
   return defaultResponse
 }
+
+// --- Data-source ("search mode") variants --------------------------------
+// The chat widget lets the user pick where answers are drawn from: external
+// research output (default) or Seismic (internal sales content). The mock
+// serves the same canned answers but re-attributes the citations so the
+// sources panel visibly differs per mode.
+export type ChatDataSource = "external" | "seismic"
+
+export function getMockChatResponseForSource(accountId: string, query: string, dataSource: ChatDataSource): ChatResponse {
+  const base = getMockChatResponse(accountId, query)
+  if (dataSource !== "seismic" || base.sources.length === 0) return base
+  return {
+    answer: base.answer,
+    sources: base.sources.map((s) => ({
+      ...s,
+      citations: s.citations.map((c) => ({
+        ...c,
+        url: `https://philips.seismic.com/app#/doc/${encodeURIComponent(s.research_group)}-${s.index}`,
+        source: `Seismic - ${c.source}`,
+      })),
+    })),
+  }
+}

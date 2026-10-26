@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils"
 import type { JobStatus, TriggerType } from "@/lib/types"
 import { formatUtc } from "@/lib/schedule-time"
 import { researchAreaLabel, useAccounts, useModelConfig, useRunHistory } from "@/lib/use-admin-data"
+import { adminErrorMessage } from "@/lib/admin-roles"
 import { SearchableSelect } from "./searchable-select"
+import { ZonedTime } from "./schedule-bits"
 
 const PAGE_SIZE = 100
 const ALL = "__all__"
@@ -34,12 +36,12 @@ const DAYS_OPTIONS: { label: string; days: number }[] = [
 ]
 
 const STATUS_META: Record<JobStatus, { label: string; classes: string; dot: string }> = {
-  queued: { label: "Queued", classes: "bg-muted text-muted-foreground", dot: "bg-muted-foreground" },
-  processing: { label: "Processing", classes: "bg-blue-50 text-blue-700", dot: "bg-blue-600" },
-  in_progress: { label: "In progress", classes: "bg-sky-50 text-sky-700", dot: "bg-sky-500" },
-  completed: { label: "Completed", classes: "bg-success/10 text-success", dot: "bg-success" },
-  failed: { label: "Failed", classes: "bg-destructive/10 text-destructive", dot: "bg-destructive" },
-  dead_letter: { label: "Dead letter", classes: "bg-violet-50 text-violet-700", dot: "bg-violet-600" },
+  queued: { label: "Queued", classes: "bg-muted text-muted-foreground ring-foreground/10", dot: "bg-muted-foreground" },
+  processing: { label: "Processing", classes: "bg-blue-50 text-blue-700 ring-blue-600/20", dot: "bg-blue-600" },
+  in_progress: { label: "In progress", classes: "bg-sky-50 text-sky-700 ring-sky-600/20", dot: "bg-sky-500" },
+  completed: { label: "Completed", classes: "bg-success/10 text-success ring-success/20", dot: "bg-success" },
+  failed: { label: "Failed", classes: "bg-destructive/10 text-destructive ring-destructive/20", dot: "bg-destructive" },
+  dead_letter: { label: "Dead letter", classes: "bg-violet-50 text-violet-700 ring-violet-600/20", dot: "bg-violet-600" },
 }
 
 function formatDuration(startedAt: string | null, completedAt: string | null) {
@@ -56,7 +58,7 @@ function formatDuration(startedAt: string | null, completedAt: string | null) {
 
 export function RunHistoryTab() {
   const [trigger, setTrigger] = useState<TriggerType | typeof ALL>(ALL)
-  const [days, setDays] = useState<number>(30)
+  const [days, setDays] = useState<number>(3)
   const [accountId, setAccountId] = useState(ALL)
   const [researchGroupId, setResearchGroupId] = useState(ALL)
   const [page, setPage] = useState(0)
@@ -125,8 +127,7 @@ export function RunHistoryTab() {
             Run history
           </h2>
           <p className="text-xs text-muted-foreground">
-            Every on-demand and scheduled research run, newest first. Status reflects the job&apos;s
-            internal lifecycle for debugging and auditing purposes.
+            Displays all on demand and scheduled research runs, ordered from newest to oldest.
           </p>
         </div>
 
@@ -202,7 +203,7 @@ export function RunHistoryTab() {
         {error && !rows?.length ? (
           <p role="alert" className="px-6 py-12 text-center text-sm text-destructive">
             {"Couldn't load run history. "}
-            {error instanceof Error ? error.message : ""}
+            {error ? adminErrorMessage(error, "Failed to load run history") : ""}
           </p>
         ) : !isLoading && rows?.length === 0 ? (
           <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
@@ -211,7 +212,6 @@ export function RunHistoryTab() {
             </span>
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium">No runs match these filters</p>
-              <p className="text-xs text-muted-foreground">Try a wider time window or different filters.</p>
             </div>
           </div>
         ) : (
@@ -221,7 +221,7 @@ export function RunHistoryTab() {
                 <TableHead className="pl-4">Triggered at</TableHead>
                 <TableHead>Account</TableHead>
                 <TableHead>Research area</TableHead>
-                <TableHead>Trigger type</TableHead>
+                <TableHead>Trigger Type</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Duration</TableHead>
                 <TableHead>Triggered by</TableHead>
@@ -248,7 +248,9 @@ export function RunHistoryTab() {
                     return (
                       <Fragment key={row.job_id}>
                         <TableRow>
-                          <TableCell className="py-3 pl-4">{formatUtc(row.created_at)}</TableCell>
+                          <TableCell className="py-3 pl-4">
+                            <ZonedTime iso={row.created_at} timeZone="UTC" />
+                          </TableCell>
                           <TableCell>
                             <span className="flex flex-col gap-0.5">
                               <span className="max-w-56 truncate font-medium">
@@ -280,7 +282,7 @@ export function RunHistoryTab() {
                           <TableCell>
                             <span
                               className={cn(
-                                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium",
+                                "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
                                 meta.classes,
                               )}
                             >
@@ -318,7 +320,7 @@ export function RunHistoryTab() {
                               <p className="mb-1 text-xs font-medium text-destructive">Error</p>
                               <p className="text-sm whitespace-pre-wrap">{row.error_message}</p>
                               {row.started_at && (
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                <p className="mt-1 text-xs text-muted-foreground" title={formatUtc(row.started_at)}>
                                   {`Started ${formatUtc(row.started_at)}`}
                                 </p>
                               )}

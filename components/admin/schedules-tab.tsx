@@ -14,6 +14,7 @@ import {
   useRevalidateSchedules,
   useSchedules,
 } from "@/lib/use-admin-data"
+import { accessDeniedMessage, isAccessDenied } from "@/lib/admin-roles"
 import { SearchableSelect } from "./searchable-select"
 import { ScheduleTable } from "./schedule-table"
 import { ScheduleFormSheet } from "./schedule-form-sheet"
@@ -21,7 +22,7 @@ import { ScheduleDetailsSheet } from "./schedule-details-sheet"
 import { ConfirmDialog } from "./confirm-dialog"
 import { Cadence } from "./schedule-bits"
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 20
 const ALL = "__all__"
 
 const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
@@ -97,16 +98,20 @@ export function SchedulesTab() {
   }
 
   async function showConflicting(row: Pick<ScheduleConfig, "account_id" | "research_group_id">) {
-    const [existing] = await api.listSchedules({
-      account_id: row.account_id,
-      research_group_id: row.research_group_id,
-      status: "enabled",
-      limit: 1,
-      offset: 0,
-    })
-    if (existing) {
-      setFormOpen(false)
-      setDetailsRow(existing)
+    try {
+      const [existing] = await api.listSchedules({
+        account_id: row.account_id,
+        research_group_id: row.research_group_id,
+        status: "enabled",
+        limit: 1,
+        offset: 0,
+      })
+      if (existing) {
+        setFormOpen(false)
+        setDetailsRow(existing)
+      }
+    } catch {
+      // Toast already explains the conflict; viewing is best-effort.
     }
   }
 
@@ -124,7 +129,7 @@ export function SchedulesTab() {
         toast.success("Schedule resumed")
       } else {
         toast.success("Schedule paused", {
-          description: "No further runs will be dispatched until it's resumed.",
+          description: "No further runs will start until it’s resumed.",
         })
       }
       await revalidate()
@@ -135,6 +140,8 @@ export function SchedulesTab() {
             "Another schedule for this account and research area is already enabled. Pause it first.",
           action: { label: "View it", onClick: () => showConflicting(row) },
         })
+      } else if (isAccessDenied(err)) {
+        toast.error("You don't have admin access", { description: accessDeniedMessage() })
       } else {
         toast.error("Couldn't update schedule", {
           description: err instanceof Error ? err.message : undefined,
@@ -158,10 +165,10 @@ export function SchedulesTab() {
               Schedules
             </h2>
             <p className="text-xs text-muted-foreground">
-              One active schedule per account and research area. Times run in each schedule&apos;s own timezone.
+              One active schedule per account and research area.
             </p>
           </div>
-          <Button onClick={openCreate} size="lg">
+          <Button onClick={openCreate}>
             <Plus data-icon="inline-start" aria-hidden="true" />
             New schedule
           </Button>

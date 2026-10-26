@@ -2,8 +2,7 @@
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { useModelConfig } from "@/lib/use-admin-data"
-import { ApiError } from "@/lib/types"
+import { useRole } from "@/lib/role-context"
 import { SchedulesTab } from "@/components/admin/schedules-tab"
 import { ModelConfigTab } from "@/components/admin/model-config-tab"
 import { RunHistoryTab } from "@/components/admin/run-history-tab"
@@ -17,26 +16,25 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"]
 
-// The former standalone "Research scheduling" screen — now a panel inside
-// the Settings dialog instead of its own sidebar nav item. The outer page
-// header card is gone (the dialog already supplies that chrome); everything
-// else (the 3-tab switcher and its content) is unchanged.
+// Settings > Research configurations (source: pages/ResearchScheduling.tsx).
+// Three tabs in the source's order: Schedules, Model config, Run history.
 export function ResearchConfigurationsPanel() {
   const [tab, setTab] = useState<TabId>("schedules")
-  const { error } = useModelConfig()
+  const { isAdmin } = useRole()
 
-  if (error instanceof ApiError && error.status === 401) return <NoAccess />
+  if (!isAdmin) return <NoAccess />
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex w-full flex-col gap-5">
       <div
         role="tablist"
-        aria-label="Research configuration sections"
-        className="flex gap-1 overflow-x-auto rounded-xl border bg-card p-1.5"
+        aria-label="Scheduling sections"
+        className="flex gap-2 overflow-x-auto rounded-xl border bg-card p-1.5"
       >
         {TABS.map((t) => (
           <button
             key={t.id}
+            type="button"
             role="tab"
             id={`tab-${t.id}`}
             aria-selected={tab === t.id}

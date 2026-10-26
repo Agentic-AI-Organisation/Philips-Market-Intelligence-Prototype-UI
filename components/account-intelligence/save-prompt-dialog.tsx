@@ -27,29 +27,35 @@ export function SavePromptDialog({ open, onOpenChange, initialText }: SavePrompt
   const [name, setName] = useState("")
   const [text, setText] = useState(initialText)
   const [submitting, setSubmitting] = useState(false)
+  const [showErrors, setShowErrors] = useState(false)
+  const [serverError, setServerError] = useState<string | null>(null)
   const revalidatePrompts = useRevalidatePrompts()
 
   useEffect(() => {
     if (open) {
       setName("")
       setText(initialText)
+      setShowErrors(false)
+      setServerError(null)
     }
   }, [open, initialText])
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
+    setShowErrors(true)
     if (!name.trim() || !text.trim()) return
     setSubmitting(true)
+    setServerError(null)
     try {
-      await api.saveSavedPrompt(api.CURRENT_USER, name, text)
-      toast.success("Saved to Saved Prompts")
+      await api.saveSavedPrompt(api.CURRENT_USER, name.trim(), text.trim())
+      toast.success("Prompt saved")
       await revalidatePrompts()
       onOpenChange(false)
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        toast.error("Saved prompts are full", { description: err.message })
+        setServerError("Saved prompt limit reached. Delete one first.")
       } else {
-        toast.error("Couldn't save prompt", { description: err instanceof Error ? err.message : undefined })
+        setServerError(err instanceof Error ? err.message : "Something went wrong.")
       }
     } finally {
       setSubmitting(false)
@@ -62,35 +68,49 @@ export function SavePromptDialog({ open, onOpenChange, initialText }: SavePrompt
         <DialogHeader>
           <DialogTitle>Save prompt</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="save-prompt-name">Name</Label>
             <Input
               id="save-prompt-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                setServerError(null)
+              }}
               placeholder="e.g. Quarterly financial summary"
+              maxLength={200}
+              aria-invalid={(showErrors && !name.trim()) || undefined}
               className="bg-card"
               autoFocus
-              required
             />
+            {showErrors && !name.trim() && <p className="text-xs text-destructive">Give the prompt a name.</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="save-prompt-text">Prompt</Label>
             <Textarea
               id="save-prompt-text"
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value)
+                setServerError(null)
+              }}
               rows={4}
-              className="bg-card"
-              required
+              aria-invalid={(showErrors && !text.trim()) || undefined}
+              className="bg-card leading-relaxed"
             />
+            {showErrors && !text.trim() && <p className="text-xs text-destructive">Prompt text can&apos;t be empty.</p>}
           </div>
+          {serverError && (
+            <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+              {serverError}
+            </p>
+          )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !name.trim() || !text.trim()}>
+            <Button type="submit" disabled={submitting}>
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
